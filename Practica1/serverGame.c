@@ -125,7 +125,6 @@ int main(int argc, char *argv[])
 	unsigned int clientLength;		   /** Length of client structure */
 	tThreadArgs *threadArgs;		   /** Thread parameters */
 	pthread_t threadID;				   /** Thread ID */
-	tString message;
 	int messageLength;
 	int length = 0;
 	unsigned int code;
@@ -171,6 +170,7 @@ int main(int argc, char *argv[])
 	// While true, accept
 
 	tSession partida;
+	tPlayerData player;
 	initSession(&partida);
 
 	// Get length of client structure
@@ -178,6 +178,7 @@ int main(int argc, char *argv[])
 
 	// Accept!
 	socketPlayer1 = accept(socketfd, (struct sockaddr *)&player1Address, &clientLength);
+	player[player1].socket = socketPlayer1;
 	// Check accept result
 	if (socketPlayer1 < 0)
 		showError("ERROR while accepting");
@@ -195,21 +196,14 @@ int main(int argc, char *argv[])
 	// Show message
 	printf("Player 1: %s\n", partida.player1Name);
 
-	// Get the message length
-	memset(message, 0, STRING_LENGTH);
-	snprintf(message, STRING_LENGTH, "Wellcome %s!\n", partida.player1Name);
-	int responseLength = strlen(message);
-	messageLength = send(socketPlayer1, &responseLength, sizeof(int), 0);
-	messageLength = send(socketPlayer1, message, responseLength, 0);
-
-	// Check bytes sent
-	if (messageLength < 0)
-		showError("ERROR while writing to socket");
+	sendStringMessage(socketPlayer1, "Welcome %s!\n", partida.player1Name);
+	sendStringMessage(socketPlayer1, "Waiting for the second player...\n");
 
 	// Get length of client structure
 	clientLength = sizeof(player2Address);
 
 	socketPlayer2 = accept(socketfd, (struct sockaddr *)&player2Address, &clientLength);
+	player[player2].socket = socketPlayer2;
 
 	if (socketPlayer2 < 0)
 		showError("ERROR while accepting");
@@ -226,12 +220,9 @@ int main(int argc, char *argv[])
 	// Show message
 	printf("Player 2: %s\n", partida.player2Name);
 
-	// Get the message length
-	memset(message, 0, STRING_LENGTH);
-	snprintf(message, STRING_LENGTH, "Wellcome %s!\n", partida.player2Name);
-	responseLength = strlen(message);
-	messageLength = send(socketPlayer2, &responseLength, sizeof(int), 0);
-	messageLength = send(socketPlayer2, message, responseLength, 0);
+	sendStringMessage(socketPlayer2, "Welcome %s!\n", partida.player2Name);
+	sendStringMessage(socketPlayer2, "Waiting for player1!\n");
+
 	// Check bytes sent
 	if (messageLength < 0)
 		showError("ERROR while writing to socket");
@@ -240,30 +231,36 @@ int main(int argc, char *argv[])
 		printSession(&partida);
 	// player1 4.b
 	code = TURN_BET;
-	messageLength = send(socketPlayer1, &code, sizeof(code), 0);
-	stack = partida.player1Stack;
-	messageLength = send(socketPlayer1, &stack, sizeof(stack), 0);
-	messageLength = recv(socketPlayer1, &bet, sizeof(bet), 0);
-	partida.player1Bet = bet;
-	if (bet > partida.player1Stack)
-		code = TURN_BET;
-	else
-		code = TURN_BET_OK;
-	messageLength = send(socketPlayer2, &code, sizeof(code), 0);
+	while (code == TURN_BET)
+	{
+		messageLength = send(socketPlayer1, &code, sizeof(code), 0);
+		stack = partida.player1Stack;
+		messageLength = send(socketPlayer1, &stack, sizeof(stack), 0);
+		messageLength = recv(socketPlayer1, &bet, sizeof(bet), 0);
+		partida.player1Bet = bet;
+		code = 0;
+		if (bet > partida.player1Stack)
+			code = TURN_BET;
+		else
+			code = TURN_BET_OK;
+	}
 	if (DEBUG_PRINT_GAMEDECK)
 		printSession(&partida);
 	// player2 4.b
 	code = TURN_BET;
-	messageLength = send(socketPlayer2, &code, sizeof(code), 0);
-	stack = partida.player2Stack;
-	messageLength = send(socketPlayer2, &stack, sizeof(stack), 0);
-	messageLength = recv(socketPlayer2, &bet, sizeof(bet), 0);
-	partida.player2Bet = bet;
-	if (bet > partida.player2Stack)
-		code = TURN_BET;
-	else
-		code = TURN_BET_OK;
-	messageLength = send(socketPlayer2, &code, sizeof(code), 0);
+	while (code == TURN_BET)
+	{
+		messageLength = send(socketPlayer2, &code, sizeof(code), 0);
+		stack = partida.player2Stack;
+		messageLength = send(socketPlayer2, &stack, sizeof(stack), 0);
+		messageLength = recv(socketPlayer2, &bet, sizeof(bet), 0);
+		partida.player2Bet = bet;
+		code = 0;
+		if (bet > partida.player2Stack)
+			code = TURN_BET;
+		else
+			code = TURN_BET_OK;
+	}
 
 	if (DEBUG_PRINT_GAMEDECK)
 		printSession(&partida);

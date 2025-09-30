@@ -75,6 +75,8 @@ typedef struct
  */
 void showError(const char *msg);
 
+int sendStringMessage(int socket, const char *fmt, ...);
+
 /**
  * Prints the received code.
  *
