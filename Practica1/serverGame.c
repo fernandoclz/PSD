@@ -304,12 +304,29 @@ int main(int argc, char *argv[])
 		recv(socketAct, &code, sizeof(code), 0);
 		showCode(code);
 
+		if (code = TURN_PLAY_HIT)
+		{
+			// funcion aux desde addcard hasta senDeck
+			code = 0;
+			recv(socketAct, &code, sizeof(code), 0);
+			showCode(code);
+		}
+		else if (code = TURN_PLAY_STAND)
+		{
+			// enviar TURN_PLAY_WAIT al act
+			// enviar TURN_PLAY_RIVAL_DONE al sig
+		}
+
 		jugadorActual = getNextPlayer(jugadorActual);
 		int tempSocket = socketAct;
 		socketAct = socketSig;
 		socketSig = tempSocket;
 
 		endgame = 1;
+	}
+	if (jugadorActual == player1)
+	{
+		// actualizar tSession
 	}
 
 	close(socketPlayer1);

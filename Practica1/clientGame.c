@@ -176,6 +176,7 @@ int main(int argc, char *argv[])
 		printf("Your opponent points: %d\n", puntosRival);
 		printf("Your opponent cards: ");
 		printFancyDeck(&suDeck);
+		// recibir codigo y segun eso, volver a hacer esto mismo, o pasar a otro caso
 		break;
 	default:
 		break;
