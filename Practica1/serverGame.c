@@ -112,6 +112,19 @@ unsigned int getRandomCard(tDeck *deck)
 	return card;
 }
 
+void addCard(tDeck *deck, tSession *partida)
+{
+	deck->cards[deck->numCards] = getRandomCard((&partida->gameDeck));
+	deck->numCards++;
+}
+
+void sendDeck(int socket, tDeck *deck)
+{
+	int tam = sizeof(tDeck);
+	send(socket, &tam, sizeof(tam), 0);
+	send(socket, deck, tam, 0);
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -131,6 +144,7 @@ int main(int argc, char *argv[])
 	unsigned int stack;
 	unsigned int bet;
 	tString message;
+	int endgame = 0;
 	// Seed
 	srand(time(0));
 
@@ -265,8 +279,38 @@ int main(int argc, char *argv[])
 	if (DEBUG_PRINT_GAMEDECK)
 		printSession(&partida);
 
-	while (1)
-		;
+	tPlayer jugadorActual = player1;
+	int socketAct = socketPlayer1, socketSig = socketPlayer2;
+	tDeck *aux = NULL;
+	while (endgame == 0)
+	{
+		if (jugadorActual == player1)
+			aux = &partida.player1Deck;
+		else
+			aux = &partida.player2Deck;
+		code = TURN_PLAY;
+		send(socketAct, &code, sizeof(unsigned int), 0);
+		code = TURN_PLAY_WAIT;
+		send(socketSig, &code, sizeof(unsigned int), 0);
+		clearDeck(aux);
+		addCard(aux, &partida);
+		addCard(aux, &partida);
+		int puntos = calculatePoints(aux);
+		send(socketAct, &puntos, sizeof(int), 0);
+		send(socketSig, &puntos, sizeof(int), 0);
+		sendDeck(socketAct, aux);
+		sendDeck(socketSig, aux);
+		code = 0;
+		recv(socketAct, &code, sizeof(code), 0);
+		showCode(code);
+
+		jugadorActual = getNextPlayer(jugadorActual);
+		int tempSocket = socketAct;
+		socketAct = socketSig;
+		socketSig = tempSocket;
+
+		endgame = 1;
+	}
 
 	close(socketPlayer1);
 	close(socketPlayer2);

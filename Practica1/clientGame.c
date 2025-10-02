@@ -52,6 +52,19 @@ unsigned int readOption()
 	return bet;
 }
 
+tDeck receiveDeck(int socket)
+{
+	tDeck deck;
+	int tam;
+
+	// Recibir el tamaño del deck
+	recv(socket, &tam, sizeof(tam), 0);
+	// Recibir la estructura del deck
+	recv(socket, &deck, tam, 0);
+
+	return deck;
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -66,6 +79,8 @@ int main(int argc, char *argv[])
 	int length = 0;
 	unsigned int stack;
 	unsigned int bet;
+	int puntos, puntosRival;
+	tDeck miDeck, suDeck;
 	// Check arguments!
 	if (argc != 3)
 	{
@@ -135,14 +150,36 @@ int main(int argc, char *argv[])
 		{
 			stack = 0;
 			msgLength = recv(socketfd, &stack, sizeof(stack), 0);
+			printf("Your stack is: %d\n", stack);
+			bet = readBet();
+			msgLength = send(socketfd, &bet, sizeof(bet), 0);
+			code = 0;
+			msgLength = recv(socketfd, &code, sizeof(code), 0);
 		}
-		printf("Your stack is: %d\n", stack);
-		bet = readBet();
-		msgLength = send(socketfd, &bet, sizeof(bet), 0);
-		code = 0;
-		msgLength = recv(socketfd, &code, sizeof(code), 0);
-	} while (code != 3);
-	// Close socket
+	} while (code == TURN_BET);
+	endOfGame = 0;
+	switch (code)
+	{
+	case TURN_PLAY:
+		recv(socketfd, &puntos, sizeof(puntos), 0);
+		miDeck = receiveDeck(socketfd);
+		printf("Your points: %d\n", puntos);
+		printf("Your cards: ");
+		printFancyDeck(&miDeck);
+
+		unsigned int option = readOption();
+		send(socketfd, &option, sizeof(option), 0);
+		break;
+	case TURN_PLAY_WAIT:
+		recv(socketfd, &puntosRival, sizeof(puntosRival), 0);
+		suDeck = receiveDeck(socketfd);
+		printf("Your opponent points: %d\n", puntosRival);
+		printf("Your opponent cards: ");
+		printFancyDeck(&suDeck);
+		break;
+	default:
+		break;
+	}
 	close(socketfd);
 
 	return 0;
