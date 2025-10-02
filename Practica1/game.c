@@ -7,13 +7,11 @@ void showError(const char *msg)
 	exit(0);
 }
 
-int sendStringMessage(int socket, const char *fmt, ...)
+int sendStringMessage(int socket, const char *m)
 {
 	char buffer[STRING_LENGTH];
-	va_list args;
-	va_start(args, fmt);
-	vsnprintf(buffer, STRING_LENGTH, fmt, args);
-	va_end(args);
+	strncpy(buffer, m, STRING_LENGTH - 1);
+	buffer[STRING_LENGTH - 1] = '\0';
 
 	int responseLength = strlen(buffer);
 	int sent;

@@ -130,6 +130,7 @@ int main(int argc, char *argv[])
 	unsigned int code;
 	unsigned int stack;
 	unsigned int bet;
+	tString message;
 	// Seed
 	srand(time(0));
 
@@ -170,7 +171,6 @@ int main(int argc, char *argv[])
 	// While true, accept
 
 	tSession partida;
-	tPlayerData player;
 	initSession(&partida);
 
 	// Get length of client structure
@@ -178,7 +178,6 @@ int main(int argc, char *argv[])
 
 	// Accept!
 	socketPlayer1 = accept(socketfd, (struct sockaddr *)&player1Address, &clientLength);
-	player[player1].socket = socketPlayer1;
 	// Check accept result
 	if (socketPlayer1 < 0)
 		showError("ERROR while accepting");
@@ -196,14 +195,14 @@ int main(int argc, char *argv[])
 	// Show message
 	printf("Player 1: %s\n", partida.player1Name);
 
-	sendStringMessage(socketPlayer1, "Welcome %s!\n", partida.player1Name);
+	sprintf(message, "Welcome %s!\n", partida.player1Name);
+	sendStringMessage(socketPlayer1, message);
 	sendStringMessage(socketPlayer1, "Waiting for the second player...\n");
 
 	// Get length of client structure
 	clientLength = sizeof(player2Address);
 
 	socketPlayer2 = accept(socketfd, (struct sockaddr *)&player2Address, &clientLength);
-	player[player2].socket = socketPlayer2;
 
 	if (socketPlayer2 < 0)
 		showError("ERROR while accepting");
@@ -220,7 +219,8 @@ int main(int argc, char *argv[])
 	// Show message
 	printf("Player 2: %s\n", partida.player2Name);
 
-	sendStringMessage(socketPlayer2, "Welcome %s!\n", partida.player2Name);
+	sprintf(message, "Welcome %s!\n", partida.player2Name);
+	sendStringMessage(socketPlayer2, message);
 	sendStringMessage(socketPlayer2, "Waiting for player1!\n");
 
 	// Check bytes sent

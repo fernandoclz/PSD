@@ -44,15 +44,6 @@ typedef struct
 	tDeck gameDeck;
 } tSession;
 
-typedef struct
-{
-	int socket;
-	tString playerName;
-	tDeck playerDeck;
-	unsigned int stack;
-	unsigned int bet;
-} tPlayerData[2];
-
 /** Players in one session */
 typedef enum
 {
