@@ -103,13 +103,7 @@ int main(int argc, char *argv[])
 	playerName[strcspn(playerName, "\n")] = 0;
 
 	// Send message to the server side
-	int responseLength = strlen(playerName);
-	msgLength = send(socketfd, &responseLength, sizeof(int), 0);
-	msgLength = send(socketfd, playerName, responseLength, 0);
-
-	// Check the number of bytes sent
-	if (msgLength < 0)
-		showError("ERROR while writing to the socket");
+	sendStringMessage(socketfd, playerName);
 
 	// Init for reading incoming message
 	memset(message, 0, STRING_LENGTH);
@@ -122,10 +116,20 @@ int main(int argc, char *argv[])
 	// Show the returned message
 	printf("%s\n", message);
 
+	memset(message, 0, STRING_LENGTH);
+	msgLength = recv(socketfd, &length, sizeof(int), 0);
+	msgLength = recv(socketfd, message, length, 0);
+	// Check bytes read
+	if (msgLength < 0)
+		showError("ERROR while reading from the socket");
+
+	// Show the returned message
+	printf("%s\n", message);
+
 	code = 0;
+	msgLength = recv(socketfd, &code, sizeof(code), 0);
 	do
 	{
-		msgLength = recv(socketfd, &code, sizeof(code), 0);
 		showCode(code);
 		if (code == TURN_BET)
 		{
@@ -137,7 +141,7 @@ int main(int argc, char *argv[])
 		msgLength = send(socketfd, &bet, sizeof(bet), 0);
 		code = 0;
 		msgLength = recv(socketfd, &code, sizeof(code), 0);
-	} while (code == 2 || code == 3);
+	} while (code != 3);
 	// Close socket
 	close(socketfd);
 
