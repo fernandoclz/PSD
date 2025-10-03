@@ -9,6 +9,7 @@ El objetivo es implementar el juego de **Blackjack** aplicando diferentes tecnol
 
 ---
 
+## 📂 Estructura del Repositorio
 📁 blackjack-distribuido/
 
 📁 proyecto1-sockets/
