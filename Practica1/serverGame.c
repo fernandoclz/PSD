@@ -1,5 +1,16 @@
 #include "serverGame.h"
+#include "signal.h"
 #include <pthread.h>
+#include <fcntl.h>
+#include <errno.h>
+
+#define MAX_HILOS 10
+volatile sig_atomic_t apagar = 0;
+
+void signal_handler(int sig)
+{
+	apagar = 1;
+}
 
 tPlayer getNextPlayer(tPlayer currentPlayer)
 {
@@ -125,6 +136,326 @@ void sendDeck(int socket, tDeck *deck)
 	send(socket, deck, tam, 0);
 }
 
+void sendStringMessage(int socket, const char *m)
+{
+	char buffer[STRING_LENGTH];
+	strncpy(buffer, m, STRING_LENGTH - 1);
+	buffer[STRING_LENGTH - 1] = '\0';
+
+	int responseLength = strlen(buffer);
+	int sent;
+	sent = send(socket, &responseLength, sizeof(int), 0);
+	if (sent < 0)
+	{
+		perror("envio de mensages\n");
+	}
+	sent = send(socket, buffer, responseLength, 0);
+	if (sent < 0)
+	{
+		perror("envio de mensages\n");
+	}
+}
+
+void recvStringMessage(int socket, char *m)
+{
+	int length = 0, messageLength;
+	memset(m, 0, STRING_LENGTH);
+	messageLength = recv(socket, &length, sizeof(int), 0);
+	if (messageLength < 0)
+		perror("recibo de mensajes\n");
+	messageLength = recv(socket, m, length, 0);
+	if (messageLength < 0)
+		perror("recibo de mensajes\n");
+}
+
+int determinarGanador(unsigned int puntos1, unsigned int puntos2)
+{
+	if (puntos1 > 21 && puntos2 > 21)
+		return 0; // Empate
+	if (puntos1 > 21)
+		return 2; // player2
+	if (puntos2 > 21)
+		return 1; // player1
+	if (puntos1 > puntos2)
+		return 1;
+	if (puntos2 > puntos1)
+		return 2;
+	return 0; // Empate
+}
+
+void recogerApuesta(int playerSocket, unsigned int *stack, unsigned int *bet)
+{
+	unsigned int code = TURN_BET;
+	while (code == TURN_BET)
+	{
+		send(playerSocket, &code, sizeof(code), 0);
+		send(playerSocket, stack, sizeof(*stack), 0);
+		recv(playerSocket, bet, sizeof(*bet), 0);
+		code = 0;
+		if (*bet > *stack || *bet < 1)
+			code = TURN_BET;
+		else
+			code = TURN_BET_OK;
+	}
+}
+
+void jugarPartida(tSession *partida, int socketAct, int socketSig, tPlayer jugadorActual)
+{
+	unsigned int code;
+	tDeck *aux = NULL;
+	unsigned int puntosAct = 0;
+
+	code = TURN_PLAY_WAIT;
+	if (SERVER_DEBUG)
+	{
+		printf("Enviando a sig\n");
+		showCode(code);
+	}
+	send(socketSig, &code, sizeof(code), 0);
+
+	for (int i = 0; i < 2; i++)
+	{
+		if (jugadorActual == player1)
+			aux = &partida->player1Deck;
+		else
+			aux = &partida->player2Deck;
+		code = TURN_PLAY;
+		if (SERVER_DEBUG)
+		{
+			printf("Enviando a act\n");
+			showCode(code);
+		}
+		send(socketAct, &code, sizeof(code), 0);
+
+		clearDeck(aux);
+		addCard(aux, partida);
+		addCard(aux, partida);
+		puntosAct = calculatePoints(aux);
+		if (SERVER_DEBUG)
+			printf("Enviando a act, los puntos %u\n", puntosAct);
+		send(socketAct, &puntosAct, sizeof(unsigned int), 0);
+		if (SERVER_DEBUG)
+			printf("Enviando a sig, los puntos %u\n", puntosAct);
+		send(socketSig, &puntosAct, sizeof(unsigned int), 0);
+		if (SERVER_DEBUG)
+			printf("Enviando a act, mazo.\n");
+		sendDeck(socketAct, aux);
+		if (SERVER_DEBUG)
+			printf("Enviando a sig, mazo.\n");
+		sendDeck(socketSig, aux);
+
+		code = 0;
+		recv(socketAct, &code, sizeof(code), 0);
+		if (SERVER_DEBUG)
+			showCode(code);
+
+		while (code == TURN_PLAY_HIT && puntosAct <= 21)
+		{
+			addCard(aux, partida);
+			puntosAct = calculatePoints(aux);
+			int playOut = 0;
+
+			if (puntosAct > 21)
+			{
+				playOut = 1;
+				code = TURN_PLAY_OUT;
+				if (SERVER_DEBUG)
+				{
+					printf("Enviando a act\n");
+					showCode(code);
+				}
+				send(socketAct, &code, sizeof(code), 0);
+				if (SERVER_DEBUG)
+					printf("Enviando a act, los puntos %u\n", puntosAct);
+				send(socketAct, &puntosAct, sizeof(unsigned int), 0);
+				if (SERVER_DEBUG)
+					printf("Enviando a act, mazo.\n");
+				sendDeck(socketAct, aux);
+			}
+			else
+			{
+				code = TURN_PLAY;
+				if (SERVER_DEBUG)
+				{
+					printf("Enviando a act\n");
+					showCode(code);
+				}
+				send(socketAct, &code, sizeof(code), 0);
+				code = TURN_PLAY_WAIT;
+				if (SERVER_DEBUG)
+				{
+					printf("Enviando a sig\n");
+					showCode(code);
+				}
+				send(socketSig, &code, sizeof(code), 0);
+				if (SERVER_DEBUG)
+					printf("Enviando a act, los puntos %u\n", puntosAct);
+				send(socketAct, &puntosAct, sizeof(unsigned int), 0);
+				if (SERVER_DEBUG)
+					printf("Enviando a sig, los puntos %u\n", puntosAct);
+				send(socketSig, &puntosAct, sizeof(unsigned int), 0);
+				if (SERVER_DEBUG)
+					printf("Enviando a act, mazo.\n");
+				sendDeck(socketAct, aux);
+				if (SERVER_DEBUG)
+					printf("Enviando a sig, mazo.\n");
+				sendDeck(socketSig, aux);
+			}
+			if (playOut == 0)
+			{
+				code = 0;
+				recv(socketAct, &code, sizeof(code), 0);
+			}
+		}
+		if (code == TURN_PLAY_STAND || code == TURN_PLAY_OUT)
+		{
+			code = TURN_PLAY_WAIT;
+			if (SERVER_DEBUG)
+			{
+				printf("Enviando a act\n");
+				showCode(code);
+			}
+			send(socketAct, &code, sizeof(code), 0);
+			code = TURN_PLAY_RIVAL_DONE;
+			if (SERVER_DEBUG)
+			{
+				printf("Enviando a sig\n");
+				showCode(code);
+			}
+			send(socketSig, &code, sizeof(code), 0);
+		}
+
+		if (i == 0)
+		{
+			jugadorActual = getNextPlayer(jugadorActual);
+			if (SERVER_DEBUG)
+				printf("cambio de jugador\n");
+			int tempSocket = socketAct;
+			socketAct = socketSig;
+			socketSig = tempSocket;
+		}
+	}
+	// salir del wait
+	unsigned int salida = 22;
+	send(socketAct, &salida, sizeof(unsigned int), 0);
+}
+
+void puntuaje(tSession *partida, int socketPlayer1, int socketPlayer2)
+{
+	unsigned int puntos1 = calculatePoints(&partida->player1Deck);
+	if (SERVER_DEBUG)
+		printf("%u\n", puntos1);
+	unsigned int puntos2 = calculatePoints(&partida->player2Deck);
+	if (SERVER_DEBUG)
+		printf("%u\n", puntos2);
+	int resultado = determinarGanador(puntos1, puntos2);
+	unsigned int code;
+
+	if (resultado == 1)
+	{
+		partida->player1Stack += partida->player2Bet;
+		partida->player2Stack -= partida->player2Bet;
+		printf("Player 1 wins!\n");
+	}
+	else if (resultado == 2)
+	{
+		partida->player2Stack += partida->player1Bet;
+		partida->player1Stack -= partida->player1Bet;
+		printf("Player 2 wins!\n");
+	}
+	else
+	{
+		printf("Draw\n");
+	}
+
+	if (partida->player1Stack == 0 || partida->player2Stack == 0)
+	{
+		printSession(partida);
+		if (partida->player1Stack == 0)
+		{
+			code = TURN_GAME_LOSE;
+			send(socketPlayer1, &code, sizeof(code), 0);
+			code = TURN_GAME_WIN;
+			send(socketPlayer2, &code, sizeof(code), 0);
+		}
+		else
+		{
+			code = TURN_GAME_LOSE;
+			send(socketPlayer2, &code, sizeof(code), 0);
+			code = TURN_GAME_WIN;
+			send(socketPlayer1, &code, sizeof(code), 0);
+		}
+	}
+}
+
+void *hilo(void *args)
+{
+	tThreadArgs *threadArgs = (tThreadArgs *)args;
+	int socketPlayer1 = threadArgs->socketPlayer1;
+	int socketPlayer2 = threadArgs->socketPlayer2;
+
+	free(threadArgs);
+	tSession partida;
+	initSession(&partida);
+	// Nombre de jugador1
+	recvStringMessage(socketPlayer1, partida.player1Name);
+	printf("Player 1: %s\n", partida.player1Name);
+	// Saludo
+	sendStringMessage(socketPlayer1, "Welcome ");
+	sendStringMessage(socketPlayer1, partida.player1Name);
+	sendStringMessage(socketPlayer1, "Waiting to bet!\n");
+
+	// Nombre de jugador2
+	recvStringMessage(socketPlayer2, partida.player2Name);
+	printf("Player 2: %s\n", partida.player2Name);
+	// Saludo
+	sendStringMessage(socketPlayer2, "Welcome ");
+	sendStringMessage(socketPlayer2, partida.player2Name);
+	sendStringMessage(socketPlayer2, "Waiting to bet!\n");
+
+	if (DEBUG_PRINT_GAMEDECK)
+		printSession(&partida);
+
+	unsigned int hayGanador = 0;
+	while (hayGanador == 0)
+	{
+		clearDeck(&(partida.player1Deck));
+		clearDeck(&(partida.player2Deck));
+		partida.player1Bet = 0;
+		partida.player2Bet = 0;
+
+		recogerApuesta(socketPlayer1, &partida.player1Stack, &partida.player1Bet);
+		if (DEBUG_PRINT_GAMEDECK)
+			printSession(&partida);
+		recogerApuesta(socketPlayer2, &partida.player2Stack, &partida.player2Bet);
+		if (DEBUG_PRINT_GAMEDECK)
+			printSession(&partida);
+
+		tPlayer jugadorActual;
+		int socketAct, socketSig;
+		if (rand() % 2 == 0)
+		{
+			jugadorActual = player1;
+			socketAct = socketPlayer1;
+			socketSig = socketPlayer2;
+		}
+		else
+		{
+			jugadorActual = player2;
+			socketAct = socketPlayer2;
+			socketSig = socketPlayer1;
+		}
+
+		jugarPartida(&partida, socketAct, socketSig, jugadorActual);
+		puntuaje(&partida, socketPlayer1, socketPlayer2);
+		if (partida.player1Stack == 0 || partida.player2Stack == 0)
+			hayGanador = 1;
+	}
+	close(socketPlayer1);
+	close(socketPlayer2);
+	pthread_exit(NULL);
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -137,14 +468,8 @@ int main(int argc, char *argv[])
 	int socketPlayer2;				   /** Socket descriptor for player 2 */
 	unsigned int clientLength;		   /** Length of client structure */
 	tThreadArgs *threadArgs;		   /** Thread parameters */
-	pthread_t threadID;				   /** Thread ID */
-	int messageLength;
-	int length = 0;
-	unsigned int code;
-	unsigned int stack;
-	unsigned int bet;
-	tString message;
-	int endgame = 0;
+	pthread_t threadID[MAX_HILOS];	   /** Thread ID */
+	int numHilos = 0;
 	// Seed
 	srand(time(0));
 
@@ -155,6 +480,9 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Usage:\n$>%s port\n", argv[0]);
 		exit(1);
 	}
+
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	// Create the socket
 	socketfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -180,157 +508,87 @@ int main(int argc, char *argv[])
 
 	// Listen
 	listen(socketfd, 10);
-
-	// Listen fuera del bucle
-	// While true, accept
-
-	tSession partida;
-	initSession(&partida);
-
-	// Get length of client structure
-	clientLength = sizeof(player1Address);
-
-	// Accept!
-	socketPlayer1 = accept(socketfd, (struct sockaddr *)&player1Address, &clientLength);
-	// Check accept result
-	if (socketPlayer1 < 0)
-		showError("ERROR while accepting");
-
-	// Init and read message
-	memset(partida.player1Name, 0, STRING_LENGTH);
-	messageLength = recv(socketPlayer1, &length, sizeof(int), 0);
-	messageLength = recv(socketPlayer1, partida.player1Name, length, 0);
-	length = 0;
-
-	// Check read bytes
-	if (messageLength < 0)
-		showError("ERROR while reading from socket");
-
-	// Show message
-	printf("Player 1: %s\n", partida.player1Name);
-
-	sprintf(message, "Welcome %s!\n", partida.player1Name);
-	sendStringMessage(socketPlayer1, message);
-	sendStringMessage(socketPlayer1, "Waiting for the second player...\n");
-
-	// Get length of client structure
-	clientLength = sizeof(player2Address);
-
-	socketPlayer2 = accept(socketfd, (struct sockaddr *)&player2Address, &clientLength);
-
-	if (socketPlayer2 < 0)
-		showError("ERROR while accepting");
-
-	// Init and read message
-	memset(partida.player2Name, 0, STRING_LENGTH);
-	messageLength = recv(socketPlayer2, &length, sizeof(int), 0);
-	messageLength = recv(socketPlayer2, partida.player2Name, length, 0);
-	length = 0;
-	// Check read bytes
-	if (messageLength < 0)
-		showError("ERROR while reading from socket");
-
-	// Show message
-	printf("Player 2: %s\n", partida.player2Name);
-
-	sprintf(message, "Welcome %s!\n", partida.player2Name);
-	sendStringMessage(socketPlayer2, message);
-	sendStringMessage(socketPlayer2, "Waiting for player1!\n");
-
-	// Check bytes sent
-	if (messageLength < 0)
-		showError("ERROR while writing to socket");
-
-	if (DEBUG_PRINT_GAMEDECK)
-		printSession(&partida);
-	// player1 4.b
-	code = TURN_BET;
-	while (code == TURN_BET)
+	fcntl(socketfd, F_SETFL, O_NONBLOCK);
+	while (!apagar)
 	{
-		messageLength = send(socketPlayer1, &code, sizeof(code), 0);
-		stack = partida.player1Stack;
-		messageLength = send(socketPlayer1, &stack, sizeof(stack), 0);
-		messageLength = recv(socketPlayer1, &bet, sizeof(bet), 0);
-		partida.player1Bet = bet;
-		code = 0;
-		if (bet > partida.player1Stack)
-			code = TURN_BET;
-		else
-			code = TURN_BET_OK;
-	}
-	if (DEBUG_PRINT_GAMEDECK)
-		printSession(&partida);
-	// player2 4.b
-	code = TURN_BET;
-	while (code == TURN_BET)
-	{
-		messageLength = send(socketPlayer2, &code, sizeof(code), 0);
-		stack = partida.player2Stack;
-		messageLength = send(socketPlayer2, &stack, sizeof(stack), 0);
-		messageLength = recv(socketPlayer2, &bet, sizeof(bet), 0);
-		partida.player2Bet = bet;
-		code = 0;
-		if (bet > partida.player2Stack)
-			code = TURN_BET;
-		else
-			code = TURN_BET_OK;
-	}
+		clientLength = sizeof(player1Address);
 
-	if (DEBUG_PRINT_GAMEDECK)
-		printSession(&partida);
-
-	tPlayer jugadorActual = player1;
-	int socketAct = socketPlayer1, socketSig = socketPlayer2;
-	tDeck *aux = NULL;
-	while (endgame == 0)
-	{
-		if (jugadorActual == player1)
-			aux = &partida.player1Deck;
-		else
-			aux = &partida.player2Deck;
-		code = TURN_PLAY;
-		send(socketAct, &code, sizeof(unsigned int), 0);
-		code = TURN_PLAY_WAIT;
-		send(socketSig, &code, sizeof(unsigned int), 0);
-		clearDeck(aux);
-		addCard(aux, &partida);
-		addCard(aux, &partida);
-		int puntos = calculatePoints(aux);
-		send(socketAct, &puntos, sizeof(int), 0);
-		send(socketSig, &puntos, sizeof(int), 0);
-		sendDeck(socketAct, aux);
-		sendDeck(socketSig, aux);
-		code = 0;
-		recv(socketAct, &code, sizeof(code), 0);
-		showCode(code);
-
-		if (code = TURN_PLAY_HIT)
+		// Accept!
+		socketPlayer1 = accept(socketfd, (struct sockaddr *)&player1Address, &clientLength);
+		// Check accept result
+		if (socketPlayer1 < 0)
 		{
-			// funcion aux desde addcard hasta senDeck
-			code = 0;
-			recv(socketAct, &code, sizeof(code), 0);
-			showCode(code);
-		}
-		else if (code = TURN_PLAY_STAND)
-		{
-			// enviar TURN_PLAY_WAIT al act
-			// enviar TURN_PLAY_RIVAL_DONE al sig
+			if (errno == EAGAIN)
+			{
+				// Senial que se manda cuando se ha puesto el socket en NO BLOQUEANTE, indica que no se ha conseguido un valor para la variable
+				usleep(100000); // Espero 100ms
+				continue;
+			}
+			else if (errno == EINTR)
+			{
+				continue;
+			}
+			else
+			{
+				printf("ERROR while accepting\n");
+				continue;
+			}
 		}
 
-		jugadorActual = getNextPlayer(jugadorActual);
-		int tempSocket = socketAct;
-		socketAct = socketSig;
-		socketSig = tempSocket;
+		// Get length of client structure
+		clientLength = sizeof(player2Address);
 
-		endgame = 1;
+		socketPlayer2 = accept(socketfd, (struct sockaddr *)&player2Address, &clientLength);
+
+		if (socketPlayer2 < 0)
+		{
+			if (errno == EAGAIN)
+			{
+				// Senial que se manda cuando se ha puesto el socket en NO BLOQUEANTE, indica que no se ha conseguido un valor para la variable
+				usleep(100000); // Espero 100ms
+				continue;
+			}
+			else if (errno == EINTR)
+			{
+				continue;
+			}
+			else
+			{
+				printf("ERROR while accepting\n");
+				continue;
+			}
+		}
+		if (numHilos >= MAX_HILOS)
+		{
+			printf("Maximo de hilos alcanzado\n");
+			continue;
+		}
+		threadArgs = (tThreadArgs *)malloc(sizeof(tThreadArgs));
+		if (threadArgs == NULL)
+		{
+			perror("ERROR allocating thread arguments");
+			close(socketPlayer1);
+			close(socketPlayer2);
+			continue;
+		}
+
+		threadArgs->socketPlayer1 = socketPlayer1;
+		threadArgs->socketPlayer2 = socketPlayer2;
+
+		if (pthread_create(&threadID[numHilos], NULL, hilo, (void *)threadArgs) != 0)
+		{
+			perror("ERROR creating thread");
+			free(threadArgs);
+			close(socketPlayer1);
+			close(socketPlayer2);
+			continue;
+		}
+		numHilos++;
 	}
-	if (jugadorActual == player1)
+	for (int i = 0; i < numHilos; i++)
 	{
-		// actualizar tSession
+		pthread_join(threadID[i], NULL);
 	}
-
-	close(socketPlayer1);
-	close(socketPlayer2);
 	close(socketfd);
 
 	return 0;
