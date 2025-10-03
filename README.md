@@ -9,7 +9,19 @@ El objetivo es implementar el juego de **Blackjack** aplicando diferentes tecnol
 
 ---
 
-<pre> ## 📂 Estructura del Repositorio ``` PSD/ │── proyecto1-sockets/ # Blackjack con sockets │── proyecto2-rpc/ # Blackjack con RPC │── proyecto3-serviciosweb/ # Blackjack con servicios web │── README.md # Este archivo ``` </pre>
+📁 blackjack-distribuido/
+
+📁 proyecto1-sockets/
+└── 🃏 Blackjack con sockets
+
+📁 proyecto2-rpc/
+└── 🃏 Blackjack con RPC
+
+📁 proyecto3-serviciosweb/
+└── 🃏 Blackjack con servicios web
+
+📄 README.md
+└── 📖 Este archivo
 
 ---
 
