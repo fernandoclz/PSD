@@ -10,3 +10,17 @@ El objetivo es implementar el juego de **Blackjack** aplicando diferentes tecnol
 ---
 
 ## 📂 Estructura del Repositorio
+│── Practica1/ # Blackjack con sockets (en proceso)
+│── Practica2/ # Blackjack con RPC (en proceso)
+│── Practica3/ # Blackjack con servicios web (en proceso)
+│── README.md # Este archivo
+
+---
+
+## 🎯 Objetivo
+Comparar cómo cambia la **implementación, complejidad y escalabilidad** del mismo problema (Blackjack) al usar distintas arquitecturas de comunicación en sistemas distribuidos.  
+
+---
+
+## 🚀 Ejecución
+Cada proyecto incluye sus instrucciones en su propio directorio.  
