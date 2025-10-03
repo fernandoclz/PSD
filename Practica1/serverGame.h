@@ -1,7 +1,7 @@
 #include "game.h"
 
 /** Debug server? */
-#define SERVER_DEBUG 1
+#define SERVER_DEBUG 0
 
 /** Shows the game deck? */
 #define DEBUG_PRINT_GAMEDECK 1

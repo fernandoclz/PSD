@@ -1,25 +1,9 @@
 #include "game.h"
-#include <stdarg.h>
 
 void showError(const char *msg)
 {
 	perror(msg);
 	exit(0);
-}
-
-int sendStringMessage(int socket, const char *m)
-{
-	char buffer[STRING_LENGTH];
-	strncpy(buffer, m, STRING_LENGTH - 1);
-	buffer[STRING_LENGTH - 1] = '\0';
-
-	int responseLength = strlen(buffer);
-	int sent;
-	sent = send(socket, &responseLength, sizeof(int), 0);
-	if (sent < 0)
-		return sent;
-	sent = send(socket, buffer, responseLength, 0);
-	return sent;
 }
 
 void showCode(unsigned int code)

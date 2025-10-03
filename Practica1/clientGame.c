@@ -36,6 +36,38 @@ unsigned int readBet()
 	return ((unsigned int)bet);
 }
 
+void sendStringMessage(int socket, const char *m)
+{
+	char buffer[STRING_LENGTH];
+	strncpy(buffer, m, STRING_LENGTH - 1);
+	buffer[STRING_LENGTH - 1] = '\0';
+
+	int responseLength = strlen(buffer);
+	int sent;
+	sent = send(socket, &responseLength, sizeof(int), 0);
+	if (sent < 0)
+	{
+		perror("envio de mensages\n");
+	}
+	sent = send(socket, buffer, responseLength, 0);
+	if (sent < 0)
+	{
+		perror("envio de mensages\n");
+	}
+}
+
+void recvStringMessage(int socket, char *m)
+{
+	int length = 0, messageLength;
+	memset(m, 0, STRING_LENGTH);
+	messageLength = recv(socket, &length, sizeof(int), 0);
+	if (messageLength < 0)
+		perror("recibo de mensajes\n");
+	messageLength = recv(socket, m, length, 0);
+	if (messageLength < 0)
+		perror("recibo de mensajes\n");
+}
+
 unsigned int readOption()
 {
 
@@ -65,6 +97,20 @@ tDeck receiveDeck(int socket)
 	return deck;
 }
 
+void opponentTurn(int socketfd, unsigned int *puntosRival)
+{
+	tDeck suDeck;
+	recv(socketfd, puntosRival, sizeof(*puntosRival), 0);
+	if (*puntosRival == 22)
+		return;
+	suDeck = receiveDeck(socketfd);
+	printf("Your opponent points: %u\n", *puntosRival);
+	printf("Your opponent cards: ");
+	printFancyDeck(&suDeck);
+	printf("\n");
+	printf("Waiting for your opponent to play...\n");
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -75,12 +121,10 @@ int main(int argc, char *argv[])
 	unsigned int endOfGame;			   /** Flag to control the end of the game */
 	tString playerName, message;	   /** Name of the player */
 	unsigned int code;				   /** Code */
-	int msgLength;
-	int length = 0;
 	unsigned int stack;
 	unsigned int bet;
-	int puntos, puntosRival;
-	tDeck miDeck, suDeck;
+	unsigned int puntos, puntosRival;
+	tDeck miDeck;
 	// Check arguments!
 	if (argc != 3)
 	{
@@ -121,65 +165,80 @@ int main(int argc, char *argv[])
 	sendStringMessage(socketfd, playerName);
 
 	// Init for reading incoming message
-	memset(message, 0, STRING_LENGTH);
-	msgLength = recv(socketfd, &length, sizeof(int), 0);
-	msgLength = recv(socketfd, message, length, 0);
-	// Check bytes read
-	if (msgLength < 0)
-		showError("ERROR while reading from the socket");
+	recvStringMessage(socketfd, message);
+	printf("%s", message);
+	recvStringMessage(socketfd, message);
+	printf("%s!\n", message);
+
+	recvStringMessage(socketfd, message);
 
 	// Show the returned message
 	printf("%s\n", message);
 
-	memset(message, 0, STRING_LENGTH);
-	msgLength = recv(socketfd, &length, sizeof(int), 0);
-	msgLength = recv(socketfd, message, length, 0);
-	// Check bytes read
-	if (msgLength < 0)
-		showError("ERROR while reading from the socket");
-
-	// Show the returned message
-	printf("%s\n", message);
-
-	code = 0;
-	msgLength = recv(socketfd, &code, sizeof(code), 0);
-	do
-	{
-		showCode(code);
-		if (code == TURN_BET)
-		{
-			stack = 0;
-			msgLength = recv(socketfd, &stack, sizeof(stack), 0);
-			printf("Your stack is: %d\n", stack);
-			bet = readBet();
-			msgLength = send(socketfd, &bet, sizeof(bet), 0);
-			code = 0;
-			msgLength = recv(socketfd, &code, sizeof(code), 0);
-		}
-	} while (code == TURN_BET);
 	endOfGame = 0;
-	switch (code)
+	while (endOfGame == 0)
 	{
-	case TURN_PLAY:
-		recv(socketfd, &puntos, sizeof(puntos), 0);
-		miDeck = receiveDeck(socketfd);
-		printf("Your points: %d\n", puntos);
-		printf("Your cards: ");
-		printFancyDeck(&miDeck);
+		code = 0;
+		recv(socketfd, &code, sizeof(code), 0);
+		if (DEBUG_CLIENT)
+			showCode(code);
 
-		unsigned int option = readOption();
-		send(socketfd, &option, sizeof(option), 0);
-		break;
-	case TURN_PLAY_WAIT:
-		recv(socketfd, &puntosRival, sizeof(puntosRival), 0);
-		suDeck = receiveDeck(socketfd);
-		printf("Your opponent points: %d\n", puntosRival);
-		printf("Your opponent cards: ");
-		printFancyDeck(&suDeck);
-		// recibir codigo y segun eso, volver a hacer esto mismo, o pasar a otro caso
-		break;
-	default:
-		break;
+		switch (code)
+		{
+		case TURN_BET:
+			stack = 0;
+			recv(socketfd, &stack, sizeof(stack), 0);
+			printf("Your stack is: %d\n", stack);
+			printf("Your turn to bet:\n");
+			bet = readBet();
+			send(socketfd, &bet, sizeof(bet), 0);
+			break;
+		case TURN_PLAY:
+			printf("Your turn to play\n");
+			recv(socketfd, &puntos, sizeof(puntos), 0);
+			miDeck = receiveDeck(socketfd);
+			printf("Your points: %d\n", puntos);
+			printf("Your cards: ");
+			printFancyDeck(&miDeck);
+			printf("\n");
+
+			unsigned int option = readOption();
+			send(socketfd, &option, sizeof(option), 0);
+			break;
+		case TURN_PLAY_WAIT:
+			opponentTurn(socketfd, &puntosRival);
+			break;
+		case TURN_PLAY_RIVAL_DONE:
+			printf("Your opponent has finished their turn.\n");
+			printf("\n");
+			break;
+		case TURN_PLAY_OUT:
+			recv(socketfd, &puntos, sizeof(puntos), 0);
+			miDeck = receiveDeck(socketfd);
+			printf("Your points: %d\n", puntos);
+			printf("Your cards: ");
+			printFancyDeck(&miDeck);
+			printf("\n");
+			printf("Your turn is over.\n");
+			printf("\n");
+
+			break;
+		case TURN_GAME_WIN:
+			printf("You won the game!\n");
+			printf("\n");
+
+			endOfGame = 1;
+			break;
+		case TURN_GAME_LOSE:
+			printf("You lost the game!\n");
+			printf("\n");
+
+			endOfGame = 1;
+			break;
+		default:
+			printf("Unkwon code: %d\n", code);
+			break;
+		}
 	}
 	close(socketfd);
 
