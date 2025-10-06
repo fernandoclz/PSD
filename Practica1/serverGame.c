@@ -2,8 +2,6 @@
 #include "signal.h"
 #include <pthread.h>
 
-#define MAX_HILOS 10
-
 tPlayer getNextPlayer(tPlayer currentPlayer)
 {
 
@@ -328,7 +326,7 @@ void jugarPartida(tSession *partida, int socketAct, int socketSig, tPlayer jugad
 		}
 	}
 	// salir del wait
-	unsigned int salida = 22;
+	unsigned int salida = -2;
 	send(socketAct, &salida, sizeof(unsigned int), 0);
 }
 
@@ -385,6 +383,7 @@ void *hilo(void *args)
 	tThreadArgs *threadArgs = (tThreadArgs *)args;
 	int socketPlayer1 = threadArgs->socketPlayer1;
 	int socketPlayer2 = threadArgs->socketPlayer2;
+	int ronda = 1;
 
 	free(threadArgs);
 	tSession partida;
@@ -425,7 +424,7 @@ void *hilo(void *args)
 
 		tPlayer jugadorActual;
 		int socketAct, socketSig;
-		if (rand() % 2 == 0)
+		if (ronda % 2 == 1)
 		{
 			jugadorActual = player1;
 			socketAct = socketPlayer1;
@@ -442,6 +441,8 @@ void *hilo(void *args)
 		puntuaje(&partida, socketPlayer1, socketPlayer2);
 		if (partida.player1Stack == 0 || partida.player2Stack == 0)
 			hayGanador = 1;
+
+		ronda++;
 	}
 	close(socketPlayer1);
 	close(socketPlayer2);
@@ -460,8 +461,8 @@ int main(int argc, char *argv[])
 	int socketPlayer2;				   /** Socket descriptor for player 2 */
 	unsigned int clientLength;		   /** Length of client structure */
 	tThreadArgs *threadArgs;		   /** Thread parameters */
-	pthread_t threadID[MAX_HILOS];	   /** Thread ID */
-	int numHilos = 0;
+	pthread_t threadID;				   /** Thread ID */
+
 	// Seed
 	srand(time(0));
 
@@ -522,11 +523,6 @@ int main(int argc, char *argv[])
 			printf("ERROR while accepting\n");
 			continue;
 		}
-		if (numHilos >= MAX_HILOS)
-		{
-			printf("Maximo de hilos alcanzado\n");
-			continue;
-		}
 		threadArgs = (tThreadArgs *)malloc(sizeof(tThreadArgs));
 		if (threadArgs == NULL)
 		{
@@ -539,7 +535,7 @@ int main(int argc, char *argv[])
 		threadArgs->socketPlayer1 = socketPlayer1;
 		threadArgs->socketPlayer2 = socketPlayer2;
 
-		if (pthread_create(&threadID[numHilos], NULL, hilo, (void *)threadArgs) != 0)
+		if (pthread_create(&threadID, NULL, hilo, (void *)threadArgs) != 0)
 		{
 			perror("ERROR creating thread");
 			free(threadArgs);
@@ -547,7 +543,6 @@ int main(int argc, char *argv[])
 			close(socketPlayer2);
 			continue;
 		}
-		numHilos++;
 	}
 	close(socketfd);
 

@@ -89,22 +89,21 @@ tDeck receiveDeck(int socket)
 	tDeck deck;
 	int tam;
 
-	// Recibir el tamaño del deck
 	recv(socket, &tam, sizeof(tam), 0);
-	// Recibir la estructura del deck
 	recv(socket, &deck, tam, 0);
 
 	return deck;
 }
 
-void opponentTurn(int socketfd, unsigned int *puntosRival)
+void opponentTurn(int socketfd)
 {
+	unsigned int puntosRival;
 	tDeck suDeck;
-	recv(socketfd, puntosRival, sizeof(*puntosRival), 0);
-	if (*puntosRival == 22)
+	recv(socketfd, &puntosRival, sizeof(puntosRival), 0);
+	if (puntosRival == -2)
 		return;
 	suDeck = receiveDeck(socketfd);
-	printf("Your opponent points: %u\n", *puntosRival);
+	printf("Your opponent points: %u\n", puntosRival);
 	printf("Your opponent cards: ");
 	printFancyDeck(&suDeck);
 	printf("\n");
@@ -123,7 +122,7 @@ int main(int argc, char *argv[])
 	unsigned int code;				   /** Code */
 	unsigned int stack;
 	unsigned int bet;
-	unsigned int puntos, puntosRival;
+	unsigned int puntos;
 	tDeck miDeck;
 	// Check arguments!
 	if (argc != 3)
@@ -171,8 +170,6 @@ int main(int argc, char *argv[])
 	printf("%s!\n", message);
 
 	recvStringMessage(socketfd, message);
-
-	// Show the returned message
 	printf("%s\n", message);
 
 	endOfGame = 0;
@@ -206,7 +203,7 @@ int main(int argc, char *argv[])
 			send(socketfd, &option, sizeof(option), 0);
 			break;
 		case TURN_PLAY_WAIT:
-			opponentTurn(socketfd, &puntosRival);
+			opponentTurn(socketfd);
 			break;
 		case TURN_PLAY_RIVAL_DONE:
 			printf("Your opponent has finished their turn.\n");
