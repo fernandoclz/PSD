@@ -1,16 +1,8 @@
 #include "serverGame.h"
 #include "signal.h"
 #include <pthread.h>
-#include <fcntl.h>
-#include <errno.h>
 
 #define MAX_HILOS 10
-volatile sig_atomic_t apagar = 0;
-
-void signal_handler(int sig)
-{
-	apagar = 1;
-}
 
 tPlayer getNextPlayer(tPlayer currentPlayer)
 {
@@ -481,9 +473,6 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
-
 	// Create the socket
 	socketfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -508,8 +497,7 @@ int main(int argc, char *argv[])
 
 	// Listen
 	listen(socketfd, 10);
-	fcntl(socketfd, F_SETFL, O_NONBLOCK);
-	while (!apagar)
+	while (1)
 	{
 		clientLength = sizeof(player1Address);
 
@@ -518,21 +506,9 @@ int main(int argc, char *argv[])
 		// Check accept result
 		if (socketPlayer1 < 0)
 		{
-			if (errno == EAGAIN)
-			{
-				// Senial que se manda cuando se ha puesto el socket en NO BLOQUEANTE, indica que no se ha conseguido un valor para la variable
-				usleep(100000); // Espero 100ms
-				continue;
-			}
-			else if (errno == EINTR)
-			{
-				continue;
-			}
-			else
-			{
-				printf("ERROR while accepting\n");
-				continue;
-			}
+
+			printf("ERROR while accepting\n");
+			continue;
 		}
 
 		// Get length of client structure
@@ -542,21 +518,9 @@ int main(int argc, char *argv[])
 
 		if (socketPlayer2 < 0)
 		{
-			if (errno == EAGAIN)
-			{
-				// Senial que se manda cuando se ha puesto el socket en NO BLOQUEANTE, indica que no se ha conseguido un valor para la variable
-				usleep(100000); // Espero 100ms
-				continue;
-			}
-			else if (errno == EINTR)
-			{
-				continue;
-			}
-			else
-			{
-				printf("ERROR while accepting\n");
-				continue;
-			}
+
+			printf("ERROR while accepting\n");
+			continue;
 		}
 		if (numHilos >= MAX_HILOS)
 		{
@@ -584,10 +548,6 @@ int main(int argc, char *argv[])
 			continue;
 		}
 		numHilos++;
-	}
-	for (int i = 0; i < numHilos; i++)
-	{
-		pthread_join(threadID[i], NULL);
 	}
 	close(socketfd);
 
