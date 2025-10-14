@@ -1,0 +1,6 @@
+Linux
+Abrir un terminal en el directorio de la práctica.
+Escribir "make"
+Servidor con ./serverGame [PORT]
+Cliente con ./clientGame [server IP] [PORT] 
+Siendo PORT un puerto del ordenador (se recomienda PORT > 1024)
