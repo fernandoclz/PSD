@@ -62,8 +62,15 @@ int main(int argc, char **argv)
 	blackJackns__tMessage playerName; /** Player name */
 	blackJackns__tBlock gameStatus;	  /** Game status */
 	unsigned int playerMove;		  /** Player's move */
-	int resCode, gameId;			  /** Result and gameId */
+	int resCode, gameId = 0;		  /** Result and gameId */
+	int endOfGame = 0;
 
+	// Check arguments
+	if (argc != 2)
+	{
+		printf("Usage: %s http://server:port\n", argv[0]);
+		exit(0);
+	}
 	// Init gSOAP environment
 	soap_init(&soap);
 
@@ -74,24 +81,31 @@ int main(int argc, char **argv)
 	allocClearMessage(&soap, &(playerName));
 	allocClearBlock(&soap, &gameStatus);
 
-	// Check arguments
-	if (argc != 2)
-	{
-		printf("Usage: %s http://server:port\n", argv[0]);
-		exit(0);
-	}
-
 	printf("Introduce your username: ");
-	fgets(playerName.msg, STRING_LENGTH - 1, stdin);
-	playerName.__size = sizeof(playerName.msg);
-	playerName.msg[playerName.__size] = 0;
-
-	int registered;
-
-	while ((registered = soap_call_blackJackns__register(&soap, serverURL, "", playerName, resCode)) != SOAP_OK)
+	if (fgets(playerName.msg, STRING_LENGTH, stdin) == NULL)
 	{
+		fprintf(stderr, "Error leyendo username\n");
+		return 1;
 	}
+	size_t ln = strlen(playerName.msg);
+	if (ln > 0 && playerName.msg[ln - 1] == '\n')
+		playerName.msg[ln - 1] = '\0';
+	playerName.__size = (int)strlen(playerName.msg);
 
+	do
+	{
+		soap_call_blackJackns__register(&soap, serverURL, "", playerName, &gameId);
+		if (gameId == ERROR_SERVER_FULL)
+		{
+			printf("Sorry, not available\n");
+			endOfGame = 1;
+		}
+		else if (gameId == ERROR_NAME_REPEATED)
+		{
+			printf("Name repeated, choose another name\n");
+			endOfGame = 1;
+		}
+	} while (gameId == 0);
 	/*
 	Mientras (jugador no registrado)
 registrar(nombreJugador, &idPartida)
@@ -104,5 +118,57 @@ playerMove (nombreJugador,idPartida, jugada, …)
 Imprimir estado del juego
 	*/
 
+	while (endOfGame == 0)
+	{
+		int res = soap_call_blackJackns__getStatus(&soap, serverURL, "", playerName, gameId, &gameStatus);
+		if (res != SOAP_OK)
+		{
+			soap_print_fault(&soap, stderr);
+			break;
+		}
+		if (DEBUG_CLIENT)
+			showCode(gameStatus.code);
+
+		switch (gameStatus.code)
+		{
+		case TURN_PLAY:
+			printf("Your turn\n\n");
+			printFancyDeck(&gameStatus.deck);
+			playerMove = readOption();
+			int res = soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, playerMove, &gameStatus);
+			if (res != SOAP_OK)
+				soap_print_fault(&soap, stderr);
+			else
+				printStatus(&gameStatus, TRUE);
+			break;
+		case TURN_WAIT:
+			printf("Opponent's turn\n");
+			printFancyDeck(&gameStatus.deck);
+			printf("Waiting for your opponent to play...\n");
+			break;
+		case GAME_WIN:
+			printf("You won the game!\n");
+			printf("\n");
+
+			endOfGame = 1;
+			break;
+		case GAME_LOSE:
+			printf("You lost the game!\n");
+			printf("\n");
+
+			endOfGame = 1;
+			break;
+		case ERROR_PLAYER_NOT_FOUND:
+			printf("Error: player not found.\n");
+			endOfGame = 1;
+			break;
+		default:
+			printf("Unkwon code: %d\n", gameStatus.code);
+			break;
+		}
+	}
+
+	soap_end(&soap);
+	soap_done(&soap);
 	return 0;
 }
