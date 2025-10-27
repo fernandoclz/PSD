@@ -1,6 +1,6 @@
 // gsoap blackJackns service name: blackJack
 // gsoap blackJackns service style: rpc
-// gsoap blackJackns service location: http//localhost:10000
+// gsoap blackJackns service location: http://localhost:10000
 // gsoap blackJackns service encoding: encoded
 // gsoap blackJackns service namespace: urn:blackJackns
 
@@ -75,3 +75,14 @@ typedef struct tBlock
 } blackJackns__tBlock;
 
 int blackJackns__register(blackJackns__tMessage playerName, int *result);
+
+int blackJackns__getStatus(
+	blackJackns__tMessage playerName,
+	int gameId,
+	blackJackns__tBlock *result);
+
+int blackJackns__playerMove(
+	blackJackns__tMessage playerName,
+	int gameId,
+	unsigned int move,
+	blackJackns__tBlock *result);

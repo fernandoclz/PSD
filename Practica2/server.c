@@ -17,11 +17,12 @@ void initGame(tGame *game)
 	initDeck(&(game->gameDeck));
 
 	// Bet and stack
-	game->player1Bet = 0;
-	game->player2Bet = 0;
+	game->player1Bet = DEFAULT_BET;
+	game->player2Bet = DEFAULT_BET;
 	game->player1Stack = INITIAL_STACK;
 	game->player2Stack = INITIAL_STACK;
 
+	game->currentPlayer = player1;
 	// Game status variables
 	game->endOfGame = FALSE;
 	game->status = gameEmpty;
@@ -48,7 +49,6 @@ void initServerStructures(struct soap *soap)
 		pthread_mutex_init(&games[i].mutex_game, NULL);
 		pthread_cond_init(&games[i].cond_player_turn, NULL);
 		pthread_cond_init(&games[i].hasta_que_llegue_el_segundo, NULL);
-		games[i].currentPlayer = player1;
 		initGame(&(games[i]));
 	}
 }
@@ -166,21 +166,95 @@ int blackJackns__getStatus(struct soap *soap,
 	while ((isPlayer1 && game->currentPlayer != player1) ||
 		   (isPlayer2 && game->currentPlayer != player2))
 	{
+		blackJackns__tDeck *Deck = isPlayer1 ? &game->player2Deck : &game->player1Deck;
+		if (Deck->__size > 0)
+		{
+			copyGameStatusStructure(result, "Waiting for your opponent!",
+									Deck,
+									TURN_WAIT);
+		}
+		else
+		{
+			copyGameStatusStructure(result, "Waiting for your opponent!",
+									NULL,
+									TURN_WAIT);
+		}
 		pthread_cond_wait(&game->cond_player_turn, &game->mutex_game);
 	}
 
-	// Si el juego terminó
+	// Después de verificar si el juego terminó
 	if (game->endOfGame)
 	{
-		copyGameStatusStructure(result, "Game over", NULL, GAME_LOSE);
+		unsigned int p1Points = calculatePoints(&game->player1Deck);
+		unsigned int p2Points = calculatePoints(&game->player2Deck);
+
+		char msg[STRING_LENGTH];
+		int resultCode;
+
+		if (isPlayer1)
+		{
+			if (p1Points <= GOAL_GAME && (p2Points > GOAL_GAME || p1Points > p2Points))
+			{
+				strcpy(msg, "You win!");
+				resultCode = GAME_WIN;
+			}
+			else if (p1Points == p2Points && p1Points <= GOAL_GAME)
+			{
+				strcpy(msg, "It's a tie!");
+				resultCode = GAME_LOSE; // O podrías crear un código EMPATE si existe
+			}
+			else
+			{
+				strcpy(msg, "You lose!");
+				resultCode = GAME_LOSE;
+			}
+		}
+		else
+		{ // isPlayer2
+			if (p2Points <= GOAL_GAME && (p1Points > GOAL_GAME || p2Points > p1Points))
+			{
+				strcpy(msg, "You win!");
+				resultCode = GAME_WIN;
+			}
+			else if (p1Points == p2Points && p2Points <= GOAL_GAME)
+			{
+				strcpy(msg, "It's a tie!");
+				resultCode = GAME_LOSE;
+			}
+			else
+			{
+				strcpy(msg, "You lose!");
+				resultCode = GAME_LOSE;
+			}
+		}
+
+		copyGameStatusStructure(result, msg, NULL, resultCode);
+		pthread_mutex_unlock(&game->mutex_game);
+		return SOAP_OK;
 	}
 	else
 	{
-		copyGameStatusStructure(result, "Your turn!",
-								isPlayer1 ? &game->player1Deck : &game->player2Deck,
-								TURN_PLAY);
+		blackJackns__tDeck *myDeck = isPlayer1 ? &game->player1Deck : &game->player2Deck;
+
+		char msg[STRING_LENGTH];
+
+		if (myDeck->__size == 0)
+		{
+			unsigned int card = getRandomCard(&game->gameDeck);
+			myDeck->cards[myDeck->__size++] = card;
+			card = getRandomCard(&game->gameDeck);
+			myDeck->cards[myDeck->__size++] = card;
+			unsigned int myPoints = calculatePoints(myDeck);
+			snprintf(msg, STRING_LENGTH, "Your turn. Now you have %u points.", myPoints);
+		}
+		else
+		{
+		}
+
+		copyGameStatusStructure(result, msg, myDeck, TURN_PLAY);
 	}
 
+	pthread_cond_broadcast(&game->cond_player_turn);
 	pthread_mutex_unlock(&game->mutex_game);
 	return SOAP_OK;
 }
@@ -201,14 +275,19 @@ int blackJackns__register(struct soap *soap, blackJackns__tMessage playerName, i
 	{
 		pthread_mutex_lock(&games[i].mutex_status);
 		tGameState aux_status = games[i].status;
-		if (aux_status == gameEmpty)
+		if (aux_status == gameEmpty || games[i].endOfGame)
 		{
+			if (games[i].endOfGame)
+				initGame(&games[i]);
 			strncpy(games[i].player1Name, playerName.msg, STRING_LENGTH - 1);
 			games[i].player1Name[STRING_LENGTH - 1] = 0;
 			games[i].status = gameWaitingPlayer;
 			gameIndex = i;
 			found = 1;
-			pthread_cond_wait(&games[i].hasta_que_llegue_el_segundo, &games[i].mutex_status);
+			while (games[i].status == gameWaitingPlayer)
+			{
+				pthread_cond_wait(&games[i].hasta_que_llegue_el_segundo, &games[i].mutex_status);
+			}
 			pthread_mutex_unlock(&games[i].mutex_status);
 			break;
 		}
@@ -297,7 +376,6 @@ int blackJackns__playerMove(struct soap *soap,
 
 	// Seleccionar mazos del jugador y rival
 	blackJackns__tDeck *myDeck = isPlayer1 ? &game->player1Deck : &game->player2Deck;
-	blackJackns__tDeck *rivalDeck = isPlayer1 ? &game->player2Deck : &game->player1Deck;
 
 	// Acción del jugador
 	if (move == PLAYER_HIT_CARD)
@@ -315,16 +393,30 @@ int blackJackns__playerMove(struct soap *soap,
 		if (myPoints > GOAL_GAME)
 		{
 			game->endOfGame = TRUE;
-			copyGameStatusStructure(result, "You busted! You lose.", myDeck, GAME_LOSE);
-			pthread_cond_signal(&game->cond_player_turn); // Despertar rival
-			pthread_mutex_unlock(&game->mutex_game);
-			return SOAP_OK;
-		}
-		else if (myPoints == GOAL_GAME)
-		{
-			game->endOfGame = TRUE;
-			copyGameStatusStructure(result, "You reached 21! You win!", myDeck, GAME_WIN);
-			pthread_cond_signal(&game->cond_player_turn);
+			char msg[STRING_LENGTH];
+			if (isPlayer2)
+			{
+				// Jugador 2 se pasó - determinar resultado
+				unsigned int p1Points = calculatePoints(&game->player1Deck);
+
+				if (p1Points > GOAL_GAME)
+				{
+					strcpy(msg, "Both players busted! Tie.");
+				}
+				else
+				{
+					strcpy(msg, "You busted! Player 1 wins.");
+				}
+				copyGameStatusStructure(result, msg, myDeck, GAME_LOSE);
+			}
+			else
+			{
+				// Jugador 1 se pasó - jugador 2 gana automáticamente
+				strcpy(msg, "You busted! You lose.");
+				copyGameStatusStructure(result, msg, myDeck, GAME_LOSE);
+			}
+
+			pthread_cond_broadcast(&game->cond_player_turn);
 			pthread_mutex_unlock(&game->mutex_game);
 			return SOAP_OK;
 		}
@@ -332,6 +424,7 @@ int blackJackns__playerMove(struct soap *soap,
 		{
 			// Continúa su turno
 			copyGameStatusStructure(result, msg, myDeck, TURN_PLAY);
+			pthread_cond_broadcast(&game->cond_player_turn);
 			pthread_mutex_unlock(&game->mutex_game);
 			return SOAP_OK;
 		}
@@ -342,11 +435,53 @@ int blackJackns__playerMove(struct soap *soap,
 		game->currentPlayer = calculateNextPlayer(game->currentPlayer);
 
 		char msg[STRING_LENGTH];
-		snprintf(msg, STRING_LENGTH, "You stand. Waiting for your opponent...");
 
-		copyGameStatusStructure(result, msg, myDeck, TURN_WAIT);
+		if (isPlayer2)
+		{
+			unsigned int p1Points = calculatePoints(&game->player1Deck);
+			unsigned int p2Points = calculatePoints(&game->player2Deck);
 
-		pthread_cond_signal(&game->cond_player_turn); // Despertar rival
+			// Ambos jugadores se han plantado - determinar ganador
+			game->endOfGame = TRUE;
+
+			if (p1Points > GOAL_GAME && p2Points > GOAL_GAME)
+			{
+				strcpy(msg, "Both players busted! You lose.");
+				copyGameStatusStructure(result, msg, myDeck, GAME_LOSE);
+			}
+			else if (p1Points > GOAL_GAME)
+			{
+				strcpy(msg, "Player 1 busted! You win!");
+				copyGameStatusStructure(result, msg, myDeck, GAME_WIN);
+			}
+			else if (p2Points > GOAL_GAME)
+			{
+				strcpy(msg, "You busted! You lose.");
+				copyGameStatusStructure(result, msg, myDeck, GAME_LOSE);
+			}
+			else if (p1Points > p2Points)
+			{
+				strcpy(msg, "Player 1 has higher points! You lose.");
+				copyGameStatusStructure(result, msg, myDeck, GAME_LOSE);
+			}
+			else if (p2Points > p1Points)
+			{
+				strcpy(msg, "You have higher points! You win!");
+				copyGameStatusStructure(result, msg, myDeck, GAME_WIN);
+			}
+			else
+			{
+				strcpy(msg, "It's a tie!");
+				copyGameStatusStructure(result, msg, myDeck, GAME_LOSE);
+			}
+		}
+		else
+		{
+			snprintf(msg, STRING_LENGTH, "You stand. Waiting for your opponent...");
+
+			copyGameStatusStructure(result, msg, myDeck, TURN_WAIT);
+		}
+		pthread_cond_broadcast(&game->cond_player_turn); // Despertar rival
 		pthread_mutex_unlock(&game->mutex_game);
 		return SOAP_OK;
 	}

@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 	blackJackns__tMessage playerName; /** Player name */
 	blackJackns__tBlock gameStatus;	  /** Game status */
 	unsigned int playerMove;		  /** Player's move */
-	int resCode, gameId = 0;		  /** Result and gameId */
+	int resCode, gameId = -3;		  /** Result and gameId */
 	int endOfGame = 0;
 
 	// Check arguments
@@ -94,7 +94,13 @@ int main(int argc, char **argv)
 
 	do
 	{
-		soap_call_blackJackns__register(&soap, serverURL, "", playerName, &gameId);
+		resCode = soap_call_blackJackns__register(&soap, serverURL, "", playerName, &gameId);
+		if (resCode != SOAP_OK)
+		{
+			soap_print_fault(&soap, stderr); // Muestra el error SOAP detallado
+			fprintf(stderr, "Error llamando al servidor (resCode=%d)\n", resCode);
+			break; // o return 1;
+		}
 		if (gameId == ERROR_SERVER_FULL)
 		{
 			printf("Sorry, not available\n");
@@ -105,18 +111,7 @@ int main(int argc, char **argv)
 			printf("Name repeated, choose another name\n");
 			endOfGame = 1;
 		}
-	} while (gameId == 0);
-	/*
-	Mientras (jugador no registrado)
-registrar(nombreJugador, &idPartida)
-Mientras (no acabe el juego)
-getStatus (nombreJugador, idPartida, …);
-Imprimir estado del juego
-Mientras (jugador tiene el turno)
-jugada = Leer opción del jugador
-playerMove (nombreJugador,idPartida, jugada, …)
-Imprimir estado del juego
-	*/
+	} while (gameId < 0 && !endOfGame);
 
 	while (endOfGame == 0)
 	{
@@ -126,25 +121,21 @@ Imprimir estado del juego
 			soap_print_fault(&soap, stderr);
 			break;
 		}
+		printStatus(&gameStatus, FALSE);
+
 		if (DEBUG_CLIENT)
-			showCode(gameStatus.code);
+			showCodeText(gameStatus.code);
 
 		switch (gameStatus.code)
 		{
 		case TURN_PLAY:
-			printf("Your turn\n\n");
-			printFancyDeck(&gameStatus.deck);
 			playerMove = readOption();
 			int res = soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, playerMove, &gameStatus);
 			if (res != SOAP_OK)
 				soap_print_fault(&soap, stderr);
-			else
-				printStatus(&gameStatus, TRUE);
 			break;
 		case TURN_WAIT:
-			printf("Opponent's turn\n");
-			printFancyDeck(&gameStatus.deck);
-			printf("Waiting for your opponent to play...\n");
+			printStatus(&gameStatus, FALSE);
 			break;
 		case GAME_WIN:
 			printf("You won the game!\n");

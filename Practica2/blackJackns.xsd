@@ -54,5 +54,40 @@
           </sequence>
       </complexType>
     </element>
+    <!-- operation request element -->
+    <element name="getStatus">
+      <complexType>
+          <sequence>
+            <element name="playerName" type="blackJackns:tMessage" minOccurs="1" maxOccurs="1"/><!-- blackJackns__getStatus::playerName -->
+            <element name="gameId" type="xsd:int" minOccurs="1" maxOccurs="1"/><!-- blackJackns__getStatus::gameId -->
+          </sequence>
+      </complexType>
+    </element>
+    <!-- operation response element -->
+    <element name="getStatusResponse">
+      <complexType>
+          <sequence>
+            <element name="result" type="blackJackns:tBlock" minOccurs="0" maxOccurs="1"/><!-- blackJackns__getStatus::result -->
+          </sequence>
+      </complexType>
+    </element>
+    <!-- operation request element -->
+    <element name="playerMove">
+      <complexType>
+          <sequence>
+            <element name="playerName" type="blackJackns:tMessage" minOccurs="1" maxOccurs="1"/><!-- blackJackns__playerMove::playerName -->
+            <element name="gameId" type="xsd:int" minOccurs="1" maxOccurs="1"/><!-- blackJackns__playerMove::gameId -->
+            <element name="move" type="xsd:unsignedInt" minOccurs="1" maxOccurs="1"/><!-- blackJackns__playerMove::move -->
+          </sequence>
+      </complexType>
+    </element>
+    <!-- operation response element -->
+    <element name="playerMoveResponse">
+      <complexType>
+          <sequence>
+            <element name="result" type="blackJackns:tBlock" minOccurs="0" maxOccurs="1"/><!-- blackJackns__playerMove::result -->
+          </sequence>
+      </complexType>
+    </element>
   </schema>
 

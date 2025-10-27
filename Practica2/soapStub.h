@@ -53,6 +53,10 @@ struct tDeck;	/* blackJack.h:64 */
 struct tBlock;	/* blackJack.h:71 */
 struct blackJackns__registerResponse;	/* blackJack.h:77 */
 struct blackJackns__register;	/* blackJack.h:77 */
+struct blackJackns__getStatusResponse;	/* blackJack.h:82 */
+struct blackJackns__getStatus;	/* blackJack.h:82 */
+struct blackJackns__playerMoveResponse;	/* blackJack.h:88 */
+struct blackJackns__playerMove;	/* blackJack.h:88 */
 
 /* blackJack.h:57 */
 #ifndef SOAP_TYPE_tMessage
@@ -110,10 +114,56 @@ struct blackJackns__register {
 };
 #endif
 
-/* blackJack.h:78 */
+/* blackJack.h:82 */
+#ifndef SOAP_TYPE_blackJackns__getStatusResponse
+#define SOAP_TYPE_blackJackns__getStatusResponse (22)
+/* complex XML schema type 'blackJackns:getStatusResponse': */
+struct blackJackns__getStatusResponse {
+        /** Optional element 'result' of XML schema type 'blackJackns:tBlock' */
+        struct tBlock *result;
+};
+#endif
+
+/* blackJack.h:82 */
+#ifndef SOAP_TYPE_blackJackns__getStatus
+#define SOAP_TYPE_blackJackns__getStatus (23)
+/* complex XML schema type 'blackJackns:getStatus': */
+struct blackJackns__getStatus {
+        /** Required element 'playerName' of XML schema type 'blackJackns:tMessage' */
+        struct tMessage playerName;
+        /** Required element 'gameId' of XML schema type 'xsd:int' */
+        int gameId;
+};
+#endif
+
+/* blackJack.h:88 */
+#ifndef SOAP_TYPE_blackJackns__playerMoveResponse
+#define SOAP_TYPE_blackJackns__playerMoveResponse (25)
+/* complex XML schema type 'blackJackns:playerMoveResponse': */
+struct blackJackns__playerMoveResponse {
+        /** Optional element 'result' of XML schema type 'blackJackns:tBlock' */
+        struct tBlock *result;
+};
+#endif
+
+/* blackJack.h:88 */
+#ifndef SOAP_TYPE_blackJackns__playerMove
+#define SOAP_TYPE_blackJackns__playerMove (26)
+/* complex XML schema type 'blackJackns:playerMove': */
+struct blackJackns__playerMove {
+        /** Required element 'playerName' of XML schema type 'blackJackns:tMessage' */
+        struct tMessage playerName;
+        /** Required element 'gameId' of XML schema type 'xsd:int' */
+        int gameId;
+        /** Required element 'move' of XML schema type 'xsd:unsignedInt' */
+        unsigned int move;
+};
+#endif
+
+/* blackJack.h:88 */
 #ifndef WITH_NOGLOBAL
 #ifndef SOAP_TYPE_SOAP_ENV__Header
-#define SOAP_TYPE_SOAP_ENV__Header (20)
+#define SOAP_TYPE_SOAP_ENV__Header (27)
 /* SOAP_ENV__Header: */
 struct SOAP_ENV__Header {
 #ifdef WITH_NOEMPTYSTRUCT
@@ -123,10 +173,10 @@ struct SOAP_ENV__Header {
 #endif
 #endif
 
-/* blackJack.h:78 */
+/* blackJack.h:88 */
 #ifndef WITH_NOGLOBAL
 #ifndef SOAP_TYPE_SOAP_ENV__Code
-#define SOAP_TYPE_SOAP_ENV__Code (21)
+#define SOAP_TYPE_SOAP_ENV__Code (28)
 /* Type SOAP_ENV__Code is a recursive data type, (in)directly referencing itself through its (base or derived class) members */
 /* SOAP_ENV__Code: */
 struct SOAP_ENV__Code {
@@ -138,10 +188,10 @@ struct SOAP_ENV__Code {
 #endif
 #endif
 
-/* blackJack.h:78 */
+/* blackJack.h:88 */
 #ifndef WITH_NOGLOBAL
 #ifndef SOAP_TYPE_SOAP_ENV__Detail
-#define SOAP_TYPE_SOAP_ENV__Detail (23)
+#define SOAP_TYPE_SOAP_ENV__Detail (30)
 /* SOAP_ENV__Detail: */
 struct SOAP_ENV__Detail {
         char *__any;
@@ -153,10 +203,10 @@ struct SOAP_ENV__Detail {
 #endif
 #endif
 
-/* blackJack.h:78 */
+/* blackJack.h:88 */
 #ifndef WITH_NOGLOBAL
 #ifndef SOAP_TYPE_SOAP_ENV__Reason
-#define SOAP_TYPE_SOAP_ENV__Reason (26)
+#define SOAP_TYPE_SOAP_ENV__Reason (33)
 /* SOAP_ENV__Reason: */
 struct SOAP_ENV__Reason {
         /** Optional element 'SOAP-ENV:Text' of XML schema type 'xsd:string' */
@@ -165,10 +215,10 @@ struct SOAP_ENV__Reason {
 #endif
 #endif
 
-/* blackJack.h:78 */
+/* blackJack.h:88 */
 #ifndef WITH_NOGLOBAL
 #ifndef SOAP_TYPE_SOAP_ENV__Fault
-#define SOAP_TYPE_SOAP_ENV__Fault (27)
+#define SOAP_TYPE_SOAP_ENV__Fault (34)
 /* SOAP_ENV__Fault: */
 struct SOAP_ENV__Fault {
         /** Optional element 'faultcode' of XML schema type 'xsd:QName' */
@@ -260,27 +310,47 @@ typedef struct tBlock blackJackns__tBlock;
 
 /* struct SOAP_ENV__Fault has binding name 'SOAP_ENV__Fault' for type '' */
 #ifndef SOAP_TYPE_SOAP_ENV__Fault
-#define SOAP_TYPE_SOAP_ENV__Fault (27)
+#define SOAP_TYPE_SOAP_ENV__Fault (34)
 #endif
 
 /* struct SOAP_ENV__Reason has binding name 'SOAP_ENV__Reason' for type '' */
 #ifndef SOAP_TYPE_SOAP_ENV__Reason
-#define SOAP_TYPE_SOAP_ENV__Reason (26)
+#define SOAP_TYPE_SOAP_ENV__Reason (33)
 #endif
 
 /* struct SOAP_ENV__Detail has binding name 'SOAP_ENV__Detail' for type '' */
 #ifndef SOAP_TYPE_SOAP_ENV__Detail
-#define SOAP_TYPE_SOAP_ENV__Detail (23)
+#define SOAP_TYPE_SOAP_ENV__Detail (30)
 #endif
 
 /* struct SOAP_ENV__Code has binding name 'SOAP_ENV__Code' for type '' */
 #ifndef SOAP_TYPE_SOAP_ENV__Code
-#define SOAP_TYPE_SOAP_ENV__Code (21)
+#define SOAP_TYPE_SOAP_ENV__Code (28)
 #endif
 
 /* struct SOAP_ENV__Header has binding name 'SOAP_ENV__Header' for type '' */
 #ifndef SOAP_TYPE_SOAP_ENV__Header
-#define SOAP_TYPE_SOAP_ENV__Header (20)
+#define SOAP_TYPE_SOAP_ENV__Header (27)
+#endif
+
+/* struct blackJackns__playerMove has binding name 'blackJackns__playerMove' for type 'blackJackns:playerMove' */
+#ifndef SOAP_TYPE_blackJackns__playerMove
+#define SOAP_TYPE_blackJackns__playerMove (26)
+#endif
+
+/* struct blackJackns__playerMoveResponse has binding name 'blackJackns__playerMoveResponse' for type 'blackJackns:playerMoveResponse' */
+#ifndef SOAP_TYPE_blackJackns__playerMoveResponse
+#define SOAP_TYPE_blackJackns__playerMoveResponse (25)
+#endif
+
+/* struct blackJackns__getStatus has binding name 'blackJackns__getStatus' for type 'blackJackns:getStatus' */
+#ifndef SOAP_TYPE_blackJackns__getStatus
+#define SOAP_TYPE_blackJackns__getStatus (23)
+#endif
+
+/* struct blackJackns__getStatusResponse has binding name 'blackJackns__getStatusResponse' for type 'blackJackns:getStatusResponse' */
+#ifndef SOAP_TYPE_blackJackns__getStatusResponse
+#define SOAP_TYPE_blackJackns__getStatusResponse (22)
 #endif
 
 /* struct blackJackns__register has binding name 'blackJackns__register' for type 'blackJackns:register' */
@@ -325,17 +395,22 @@ typedef struct tBlock blackJackns__tBlock;
 
 /* struct SOAP_ENV__Reason * has binding name 'PointerToSOAP_ENV__Reason' for type '' */
 #ifndef SOAP_TYPE_PointerToSOAP_ENV__Reason
-#define SOAP_TYPE_PointerToSOAP_ENV__Reason (29)
+#define SOAP_TYPE_PointerToSOAP_ENV__Reason (36)
 #endif
 
 /* struct SOAP_ENV__Detail * has binding name 'PointerToSOAP_ENV__Detail' for type '' */
 #ifndef SOAP_TYPE_PointerToSOAP_ENV__Detail
-#define SOAP_TYPE_PointerToSOAP_ENV__Detail (28)
+#define SOAP_TYPE_PointerToSOAP_ENV__Detail (35)
 #endif
 
 /* struct SOAP_ENV__Code * has binding name 'PointerToSOAP_ENV__Code' for type '' */
 #ifndef SOAP_TYPE_PointerToSOAP_ENV__Code
-#define SOAP_TYPE_PointerToSOAP_ENV__Code (22)
+#define SOAP_TYPE_PointerToSOAP_ENV__Code (29)
+#endif
+
+/* struct tBlock * has binding name 'PointerToblackJackns__tBlock' for type 'blackJackns:tBlock' */
+#ifndef SOAP_TYPE_PointerToblackJackns__tBlock
+#define SOAP_TYPE_PointerToblackJackns__tBlock (20)
 #endif
 
 /* int * has binding name 'PointerToint' for type 'xsd:int' */
@@ -388,6 +463,20 @@ typedef struct tBlock blackJackns__tBlock;
     SOAP_FMAC5 int SOAP_FMAC6 soap_send_blackJackns__register(struct soap *soap, const char *soap_endpoint, const char *soap_action, struct tMessage playerName);
     /** Web service asynchronous operation 'soap_recv_blackJackns__register' to receive a response message from the connected endpoint, returns SOAP_OK or error code */
     SOAP_FMAC5 int SOAP_FMAC6 soap_recv_blackJackns__register(struct soap *soap, int *result);
+    
+    /** Web service synchronous operation 'soap_call_blackJackns__getStatus' to the specified endpoint and SOAP Action header, returns SOAP_OK or error code */
+    SOAP_FMAC5 int SOAP_FMAC6 soap_call_blackJackns__getStatus(struct soap *soap, const char *soap_endpoint, const char *soap_action, struct tMessage playerName, int gameId, struct tBlock *result);
+    /** Web service asynchronous operation 'soap_send_blackJackns__getStatus' to send a request message to the specified endpoint and SOAP Action header, returns SOAP_OK or error code */
+    SOAP_FMAC5 int SOAP_FMAC6 soap_send_blackJackns__getStatus(struct soap *soap, const char *soap_endpoint, const char *soap_action, struct tMessage playerName, int gameId);
+    /** Web service asynchronous operation 'soap_recv_blackJackns__getStatus' to receive a response message from the connected endpoint, returns SOAP_OK or error code */
+    SOAP_FMAC5 int SOAP_FMAC6 soap_recv_blackJackns__getStatus(struct soap *soap, struct tBlock *result);
+    
+    /** Web service synchronous operation 'soap_call_blackJackns__playerMove' to the specified endpoint and SOAP Action header, returns SOAP_OK or error code */
+    SOAP_FMAC5 int SOAP_FMAC6 soap_call_blackJackns__playerMove(struct soap *soap, const char *soap_endpoint, const char *soap_action, struct tMessage playerName, int gameId, unsigned int move, struct tBlock *result);
+    /** Web service asynchronous operation 'soap_send_blackJackns__playerMove' to send a request message to the specified endpoint and SOAP Action header, returns SOAP_OK or error code */
+    SOAP_FMAC5 int SOAP_FMAC6 soap_send_blackJackns__playerMove(struct soap *soap, const char *soap_endpoint, const char *soap_action, struct tMessage playerName, int gameId, unsigned int move);
+    /** Web service asynchronous operation 'soap_recv_blackJackns__playerMove' to receive a response message from the connected endpoint, returns SOAP_OK or error code */
+    SOAP_FMAC5 int SOAP_FMAC6 soap_recv_blackJackns__playerMove(struct soap *soap, struct tBlock *result);
 
 /******************************************************************************\
  *                                                                            *
@@ -397,6 +486,10 @@ typedef struct tBlock blackJackns__tBlock;
 
     /** Web service operation 'blackJackns__register' implementation, should return SOAP_OK or error code */
     SOAP_FMAC5 int SOAP_FMAC6 blackJackns__register(struct soap*, struct tMessage playerName, int *result);
+    /** Web service operation 'blackJackns__getStatus' implementation, should return SOAP_OK or error code */
+    SOAP_FMAC5 int SOAP_FMAC6 blackJackns__getStatus(struct soap*, struct tMessage playerName, int gameId, struct tBlock *result);
+    /** Web service operation 'blackJackns__playerMove' implementation, should return SOAP_OK or error code */
+    SOAP_FMAC5 int SOAP_FMAC6 blackJackns__playerMove(struct soap*, struct tMessage playerName, int gameId, unsigned int move, struct tBlock *result);
 
 /******************************************************************************\
  *                                                                            *
@@ -409,6 +502,10 @@ SOAP_FMAC5 int SOAP_FMAC6 soap_serve(struct soap*);
 SOAP_FMAC5 int SOAP_FMAC6 soap_serve_request(struct soap*);
 
 SOAP_FMAC5 int SOAP_FMAC6 soap_serve_blackJackns__register(struct soap*);
+
+SOAP_FMAC5 int SOAP_FMAC6 soap_serve_blackJackns__getStatus(struct soap*);
+
+SOAP_FMAC5 int SOAP_FMAC6 soap_serve_blackJackns__playerMove(struct soap*);
 
 #endif
 

@@ -3,7 +3,7 @@
 #include "game.h"
 
 /** Debug mode? */
-#define DEBUG_CLIENT FALSE
+#define DEBUG_CLIENT TRUE
 
 /**
  * Reads a bet entered by the player.
