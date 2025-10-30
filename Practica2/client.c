@@ -113,6 +113,11 @@ int main(int argc, char **argv)
 		}
 	} while (gameId < 0 && !endOfGame);
 
+	if (gameId >= 0)
+	{
+		printf("Usuario registrado correctamente\n");
+	}
+
 	while (endOfGame == 0)
 	{
 		int res = soap_call_blackJackns__getStatus(&soap, serverURL, "", playerName, gameId, &gameStatus);
@@ -139,12 +144,15 @@ int main(int argc, char **argv)
 			break;
 		case GAME_WIN:
 			printf("You won the game!\n");
+			printStatus(&gameStatus, FALSE);
 			printf("\n");
 
 			endOfGame = 1;
 			break;
 		case GAME_LOSE:
 			printf("You lost the game!\n");
+			printStatus(&gameStatus, FALSE);
+
 			printf("\n");
 
 			endOfGame = 1;
@@ -155,6 +163,8 @@ int main(int argc, char **argv)
 			break;
 		default:
 			printf("Unkwon code: %d\n", gameStatus.code);
+			printStatus(&gameStatus, FALSE);
+			endOfGame = 1;
 			break;
 		}
 	}
