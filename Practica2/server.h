@@ -10,7 +10,7 @@
 #define MAX_GAMES 5
 
 /** Initial stack for each player */
-#define INITIAL_STACK 1
+#define INITIAL_STACK 2
 
 /** Default bet */
 #define DEFAULT_BET 1
@@ -64,6 +64,7 @@ typedef struct game
 	blackJackns__tDeck gameDeck; /** Main deck */
 	int endOfGame;				 /** Flag to control the end of the game */
 	tGameState status;			 /** Flag to indicate the status of this game */
+	int stacksUpdated;
 
 	pthread_mutex_t mutex_status; // para el status, playerName
 	pthread_mutex_t mutex_game;	  // para la game deck, current player...

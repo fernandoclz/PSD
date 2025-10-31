@@ -54,6 +54,21 @@ unsigned int readOption()
 	return bet;
 }
 
+void printStatusWithoutD(blackJackns__tBlock *status, int debug)
+{
+
+	if (debug)
+		showCodeText(status->code);
+
+	// Set end of message
+	(status->msgStruct).msg[(status->msgStruct).__size] = 0;
+
+	// Show message received from server
+	printf("%s\n", (status->msgStruct).msg);
+
+	// Show deck
+}
+
 int main(int argc, char **argv)
 {
 
@@ -126,7 +141,7 @@ int main(int argc, char **argv)
 			soap_print_fault(&soap, stderr);
 			break;
 		}
-		printStatus(&gameStatus, FALSE);
+		// printStatus(&gameStatus, FALSE);
 
 		if (DEBUG_CLIENT)
 			showCodeText(gameStatus.code);
@@ -134,24 +149,29 @@ int main(int argc, char **argv)
 		switch (gameStatus.code)
 		{
 		case TURN_PLAY:
+
+			printStatus(&gameStatus, FALSE);
+
+			printf("\n");
 			playerMove = readOption();
-			int res = soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, playerMove, &gameStatus);
+			res = soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, playerMove, &gameStatus);
+			printStatus(&gameStatus, FALSE);
 			if (res != SOAP_OK)
 				soap_print_fault(&soap, stderr);
 			break;
 		case TURN_WAIT:
+			printf("Esperando\n");
 			printStatus(&gameStatus, FALSE);
+			printf("\n");
 			break;
 		case GAME_WIN:
-			printf("You won the game!\n");
-			printStatus(&gameStatus, FALSE);
+			printStatusWithoutD(&gameStatus, FALSE);
 			printf("\n");
 
 			endOfGame = 1;
 			break;
 		case GAME_LOSE:
-			printf("You lost the game!\n");
-			printStatus(&gameStatus, FALSE);
+			printStatusWithoutD(&gameStatus, FALSE);
 
 			printf("\n");
 
