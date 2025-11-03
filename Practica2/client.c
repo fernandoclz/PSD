@@ -54,19 +54,10 @@ unsigned int readOption()
 	return bet;
 }
 
-void printStatusWithoutD(blackJackns__tBlock *status, int debug)
+void printStatusMessage(blackJackns__tBlock *status)
 {
-
-	if (debug)
-		showCodeText(status->code);
-
-	// Set end of message
-	(status->msgStruct).msg[(status->msgStruct).__size] = 0;
-
-	// Show message received from server
-	printf("%s\n", (status->msgStruct).msg);
-
-	// Show deck
+	status->msgStruct.msg[status->msgStruct.__size] = 0;
+	printf("%s\n", status->msgStruct.msg);
 }
 
 int main(int argc, char **argv)
@@ -129,63 +120,44 @@ int main(int argc, char **argv)
 	} while (gameId < 0 && !endOfGame);
 
 	if (gameId >= 0)
-	{
-		printf("Usuario registrado correctamente\n");
-	}
+		printf("User registered successfully\n");
 
-	while (endOfGame == 0)
+	while (!endOfGame)
 	{
-		int res = soap_call_blackJackns__getStatus(&soap, serverURL, "", playerName, gameId, &gameStatus);
-		if (res != SOAP_OK)
+		resCode = soap_call_blackJackns__getStatus(&soap, serverURL, "", playerName, gameId, &gameStatus);
+		if (resCode != SOAP_OK)
 		{
 			soap_print_fault(&soap, stderr);
 			break;
 		}
-		// printStatus(&gameStatus, FALSE);
-
-		if (DEBUG_CLIENT)
-			showCodeText(gameStatus.code);
 
 		switch (gameStatus.code)
 		{
 		case TURN_PLAY:
-
 			printStatus(&gameStatus, FALSE);
-
 			printf("\n");
-			playerMove = readOption();
-			res = soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, playerMove, &gameStatus);
+			resCode = soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, readOption(), &gameStatus);
 			printStatus(&gameStatus, FALSE);
-			if (res != SOAP_OK)
-				soap_print_fault(&soap, stderr);
+			printf("\n");
 			break;
 		case TURN_WAIT:
-			printf("Esperando\n");
+			printf("Waiting...\n");
 			printStatus(&gameStatus, FALSE);
 			printf("\n");
 			break;
 		case GAME_WIN:
-			printStatusWithoutD(&gameStatus, FALSE);
-			printf("\n");
-
-			endOfGame = 1;
-			break;
 		case GAME_LOSE:
-			printStatusWithoutD(&gameStatus, FALSE);
-
-			printf("\n");
-
+			printStatusMessage(&gameStatus);
 			endOfGame = 1;
 			break;
 		case ERROR_PLAYER_NOT_FOUND:
-			printf("Error: player not found.\n");
+			printf("Player not found.\n");
 			endOfGame = 1;
 			break;
 		default:
-			printf("Unkwon code: %d\n", gameStatus.code);
-			printStatus(&gameStatus, FALSE);
+			printf("Unknown code: %d\n", gameStatus.code);
+			printStatusMessage(&gameStatus);
 			endOfGame = 1;
-			break;
 		}
 	}
 
