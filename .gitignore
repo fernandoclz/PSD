@@ -2,3 +2,6 @@
 !/*/*.*
 !Makefile
 .vscode/
+*.zip
+*:Zone.Identifier
+.txt
