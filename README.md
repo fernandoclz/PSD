@@ -33,3 +33,6 @@ Comparar cómo cambia la **implementación, complejidad y escalabilidad** del mi
 
 ## 🚀 Ejecución
 Cada proyecto incluye sus instrucciones en su propio directorio.  
+
+Copyright (c) 2025 Fernando Chang Liu Zhang y Kaikai Wang
+Todos los derechos reservados.
