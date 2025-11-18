@@ -4,4 +4,6 @@
 .vscode/
 *.zip
 *:Zone.Identifier
-.txt
+*.txt
+*.o
+*.bmp
