@@ -192,6 +192,11 @@ int main(int argc, char **argv)
 
 			free(recvBuffer);
 		}
+		unsigned int rowsToSend = 0; // 0 filas indica fin
+		for (int worker = 1; worker < size; worker++)
+		{
+			MPI_Send(&rowsToSend, 1, MPI_UNSIGNED, worker, tag, MPI_COMM_WORLD);
+		}
 
 		// Close files
 		close(inputFile);
@@ -213,59 +218,69 @@ int main(int argc, char **argv)
 		unsigned int height = info_buffer[0];
 		unsigned int width = info_buffer[1];
 		rowSize = info_buffer[2];
-
-		MPI_Probe(0, tag, MPI_COMM_WORLD, &status);
-		int count;
-		MPI_Get_count(&status, MPI_BYTE, &count);
-
-		unsigned char *recvBuffer = (unsigned char *)malloc(count);
-		MPI_Recv(recvBuffer, count, MPI_BYTE, 0, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-		unsigned int rowsReceived;
-		unsigned int startRow;
-		memcpy(&rowsReceived, recvBuffer, sizeof(unsigned int));
-		memcpy(&startRow, recvBuffer + sizeof(unsigned int), sizeof(unsigned int));
-
-		unsigned char *data = recvBuffer + sizeof(unsigned int) * 2;
-		unsigned int pixelsByte = count - sizeof(unsigned int) * 2;
-
-		printf("Worker %d: received %u rows starting at %u (bytes=%u)\n", rank, rowsReceived, startRow, pixelsByte);
-
-		unsigned int out_buffer_size = 2 * sizeof(unsigned int) + pixelsByte;
-		auxPtr = (unsigned char *)malloc(out_buffer_size);
-
-		memcpy(auxPtr, &rowsReceived, sizeof(unsigned int));
-		memcpy(auxPtr + sizeof(unsigned int), &startRow, sizeof(unsigned int));
-
-		for (unsigned int r = 0; r < rowsReceived; ++r)
+		unsigned int rowsReceived = 0;
+		do
 		{
-			unsigned char *rowIn = data + ((size_t)r * rowSize);
-			unsigned char *rowOut = auxPtr + 2 * sizeof(unsigned int) + ((size_t)r * rowSize);
+			MPI_Status status;
+			MPI_Probe(0, tag, MPI_COMM_WORLD, &status);
+			int count;
+			MPI_Get_count(&status, MPI_BYTE, &count);
 
-			for (unsigned int col = 0; col < width; col++)
+			unsigned char *recvBuffer = (unsigned char *)malloc(count);
+			MPI_Recv(recvBuffer, count, MPI_BYTE, 0, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+			unsigned int startRow;
+			memcpy(&rowsReceived, recvBuffer, sizeof(unsigned int));
+
+			if (rowsReceived != 0)
 			{
-				unsigned char left = (col > 0) ? rowIn[3 * (col - 1)] : rowIn[3 * col];
-				unsigned char center = rowIn[3 * col];
-				unsigned char right = (col + 1 < width) ? rowIn[3 * (col + 1)] : rowIn[3 * col];
+				memcpy(&startRow, recvBuffer + sizeof(unsigned int), sizeof(unsigned int));
+				unsigned char *data = recvBuffer + sizeof(unsigned int) * 2;
+				unsigned int pixelsByte = count - sizeof(unsigned int) * 2;
 
-				tPixelVector vec = {left, center, right};
+				printf("Worker %d: received %u rows starting at %u (bytes=%u)\n", rank, rowsReceived, startRow, pixelsByte);
 
-				unsigned char outValue = calculatePixelValue(vec, 3, threshold, 0);
+				unsigned int out_buffer_size = 2 * sizeof(unsigned int) + pixelsByte;
+				auxPtr = (unsigned char *)malloc(out_buffer_size);
 
-				// Escribir en los 3 canales
-				rowOut[3 * col + 0] = outValue;
-				rowOut[3 * col + 1] = outValue;
-				rowOut[3 * col + 2] = outValue;
+				memcpy(auxPtr, &rowsReceived, sizeof(unsigned int));
+				memcpy(auxPtr + sizeof(unsigned int), &startRow, sizeof(unsigned int));
+
+				for (unsigned int r = 0; r < rowsReceived; ++r)
+				{
+					unsigned char *rowIn = data + ((size_t)r * rowSize);
+					unsigned char *rowOut = auxPtr + 2 * sizeof(unsigned int) + ((size_t)r * rowSize);
+
+					for (unsigned int col = 0; col < width; col++)
+					{
+						unsigned char left = (col > 0) ? rowIn[3 * (col - 1)] : rowIn[3 * col];
+						unsigned char center = rowIn[3 * col];
+						unsigned char right = (col + 1 < width) ? rowIn[3 * (col + 1)] : rowIn[3 * col];
+
+						tPixelVector vec = {left, center, right};
+
+						unsigned char outValue = calculatePixelValue(vec, 3, threshold, 0);
+
+						// Escribir en los 3 canales
+						rowOut[3 * col + 0] = outValue;
+						rowOut[3 * col + 1] = outValue;
+						rowOut[3 * col + 2] = outValue;
+					}
+					if (rowSize > width * 3)
+					{
+						memcpy(rowOut + width * 3, rowIn + width * 3, rowSize - width * 3);
+					}
+				}
+				MPI_Send(auxPtr, out_buffer_size, MPI_BYTE, 0, tag, MPI_COMM_WORLD);
+
+				free(auxPtr);
 			}
-			if (rowSize > width * 3)
+			else
 			{
-				memcpy(rowOut + width * 3, rowIn + width * 3, rowSize - width * 3);
+				printf("Worker %d ending\n", rank);
 			}
-		}
-		MPI_Send(auxPtr, out_buffer_size, MPI_BYTE, 0, tag, MPI_COMM_WORLD);
-
-		free(recvBuffer);
-		free(auxPtr);
+			free(recvBuffer);
+		} while (rowsReceived != 0);
 	}
 
 	// Finish MPI environment
