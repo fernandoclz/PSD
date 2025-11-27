@@ -228,7 +228,7 @@ int main(int argc, char **argv)
 				currentRow += rowsSentToWorker;
 			}
 		}
-		printf("%d %d\n", height, devueltos);
+
 		unsigned int termination[2] = {0, 0}; // rows=0, startRow=0
 
 		for (int worker = 1; worker < size; worker++)
