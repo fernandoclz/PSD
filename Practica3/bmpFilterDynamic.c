@@ -144,14 +144,10 @@ int main(int argc, char **argv)
 		inputBuffer = (unsigned char *)malloc(pixelesTotalesEnBytes * sizeof(unsigned char));
 		read(inputFile, inputBuffer, pixelesTotalesEnBytes);
 
-		imageDimensions[0] = height;
-		imageDimensions[1] = width;
+		imageDimensions[0] = width;
+		imageDimensions[1] = rowSize;
 
-		unsigned int info_buffer[3];
-		info_buffer[0] = imageDimensions[0];
-		info_buffer[1] = imageDimensions[1];
-		info_buffer[2] = rowSize;
-		MPI_Bcast(info_buffer, 3, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+		MPI_Bcast(imageDimensions, 2, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
 
 		// dinamico
 		unsigned int devueltos = 0;
@@ -250,12 +246,10 @@ int main(int argc, char **argv)
 	// Worker process
 	else
 	{
-		unsigned int info_buffer[3];
-		MPI_Bcast(info_buffer, 3, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+		MPI_Bcast(imageDimensions, 2, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
 
-		unsigned int height = info_buffer[0];
-		unsigned int width = info_buffer[1];
-		rowSize = info_buffer[2];
+		unsigned int width = imageDimensions[0];
+		rowSize = imageDimensions[1];
 		unsigned int rowsReceived = 0;
 		do
 		{
