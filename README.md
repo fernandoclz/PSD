@@ -40,7 +40,7 @@ Comprender el funcionamiento de la comunicación punto a punto sin abstracciones
 
 En este proyecto se expone la lógica del juego a través de un conjunto de endpoints REST, permitiendo jugar mediante peticiones HTTP.
 
-###✦ Características principales
+### ✦ Características principales
 
 * Servicio SOAP para gestionar partidas, jugadores y acciones.
 
@@ -48,7 +48,7 @@ En este proyecto se expone la lógica del juego a través de un conjunto de endp
 
 * Separación clara entre lógica del juego y capa de comunicación.
 
-###✦ Objetivo
+### ✦ Objetivo
 
 Aprender a diseñar e implementar servicios web basados en SOAP y WSDL.
 
