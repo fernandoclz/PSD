@@ -36,19 +36,21 @@ Comprender el funcionamiento de la comunicación punto a punto sin abstracciones
 
 ---
 
-## 🌐 Proyecto 2: Blackjack con Servicios Web (REST)
+## 🌐 Proyecto 2: Blackjack con Servicios Web (SOAP)
 
-En este proyecto se expone la lógica del juego a través de un conjunto de **endpoints REST**, permitiendo jugar mediante peticiones HTTP.
+En este proyecto se expone la lógica del juego a través de un conjunto de endpoints REST, permitiendo jugar mediante peticiones HTTP.
 
-### ✦ Características principales
+###✦ Características principales
 
-* API REST para gestionar partidas, jugadores y acciones.
-* Respuestas estructuradas en formato JSON.
+* Servicio SOAP para gestionar partidas, jugadores y acciones.
+
+* Intercambio de mensajes XML conforme al estándar SOAP.
+
 * Separación clara entre lógica del juego y capa de comunicación.
 
-### ✦ Objetivo
+###✦ Objetivo
 
-Aprender a diseñar e implementar servicios web en arquitecturas distribuidas.
+Aprender a diseñar e implementar servicios web basados en SOAP y WSDL.
 
 ---
 
@@ -70,15 +72,9 @@ Comprender el modelo de paso de mensajes en entornos paralelos y distribuidos.
 
 ## 📌 Requisitos
 
-* Python / Java / C (según implementación de cada proyecto).
+* C.
 * Librerías estándar para sockets y HTTP.
-* Entorno MPI para la práctica 3 (por ejemplo, OpenMPI).
-
----
-
-## ▶️ Ejecución
-
-Cada proyecto contiene instrucciones específicas dentro de su respectiva carpeta.
+* Entorno MPI para la práctica 3 (OpenMPI).
 
 ---
 
